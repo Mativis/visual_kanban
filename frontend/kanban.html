@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Kanban — Painel</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-left">
+            <h1>📋 Visual Kanban</h1>
+            <span id="user-info" class="user-badge"></span>
+        </div>
+        <div class="header-right">
+            <button id="btn-chat" class="btn-secondary">💬 Chat</button>
+            <button id="btn-alertas" class="btn-secondary">🔔 Alertas</button>
+            <button id="btn-logout" class="btn-secondary">Sair</button>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Alertas -->
+        <div id="alertas-panel" class="panel" style="display:none;">
+            <h2>🔔 Alertas</h2>
+            <div id="alertas-list"></div>
+        </div>
+
+        <!-- Kanban Board -->
+        <section class="kanban-section">
+            <div class="kanban-header">
+                <h2>Quadro de Produção</h2>
+                <div id="filter-bar" class="filter-bar"></div>
+            </div>
+            <div id="kanban-board" class="kanban-board">
+                <div class="kanban-column" data-status="Pendente">
+                    <div class="column-header">⏳ Pendente</div>
+                    <div class="column-body" id="col-pendente"></div>
+                </div>
+                <div class="kanban-column" data-status="Em andamento">
+                    <div class="column-header">🔄 Em andamento</div>
+                    <div class="column-body" id="col-andamento"></div>
+                </div>
+                <div class="kanban-column" data-status="Pronto">
+                    <div class="column-header">✅ Pronto</div>
+                    <div class="column-body" id="col-pronto"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Chat -->
+        <div id="chat-panel" class="panel" style="display:none;">
+            <h2>💬 Chat</h2>
+            <div id="chat-messages" class="chat-messages"></div>
+            <div class="chat-input">
+                <input type="text" id="chat-msg" placeholder="Digite sua mensagem...">
+                <button id="btn-send-msg" class="btn-primary">Enviar</button>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/auth.js"></script>
+    <script src="js/kanban.js"></script>
+    <script src="js/chat.js"></script>
+</body>
+</html>
