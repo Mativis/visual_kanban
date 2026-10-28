@@ -5,21 +5,23 @@ Uso no kanban_confeccao.py:
     from streamlit_integration.enviar_kanban import botao_enviar_kanban
     botao_enviar_kanban(df_kanban)
 """
-import json
+import os
+import sys
 
 import streamlit as st
 
 
 def _serializar_kanban(df):
     """Converte o DataFrame do Kanban em lista de dicts para envio."""
-    if df is None or df.empty:
+    if df is None or (hasattr(df, "empty") and df.empty):
         return []
+    import pandas as pd
     registros = []
     for _, row in df.iterrows():
         rec = {}
         for col in df.columns:
             v = row[col]
-            if pd.isna(v) if False else (v is None):
+            if pd.isna(v):
                 rec[col] = ""
             elif hasattr(v, "strftime"):
                 rec[col] = v.strftime("%d/%m/%Y")
@@ -37,8 +39,6 @@ def _serializar_kanban(df):
 
 def botao_enviar_kanban(df_kanban, url_appscript=None):
     """Renderiza o botão 'Enviar Kanban' e envia os dados para o Google Sheets."""
-    import pandas as pd
-
     url = url_appscript or st.session_state.get("url_appscript_kanban", "")
     if not url:
         url = st.text_input(

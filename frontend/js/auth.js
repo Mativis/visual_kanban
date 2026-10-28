@@ -1,5 +1,5 @@
 // auth.js - gerenciamento de sessão
-const API_URL = ''; // mesma origem; ajuste se o AppScript estiver em outro domínio
+// API_URL é definida em config.js
 
 function getToken() { return localStorage.getItem('vk_token'); }
 function getUser() { return JSON.parse(localStorage.getItem('vk_user') || 'null'); }

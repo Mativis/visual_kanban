@@ -1,20 +1,65 @@
 /**
  * Visual Kanban - Google Apps Script Backend
  * Atua como API REST para o frontend e como ponte com o Google Sheets.
- * 
- * Sheets necessários:
- *   - "Pedidos"     : dados do Kanban (enviados pelo Streamlit)
- *   - "Usuarios"    : cadastro de analistas e confecções (user, senha, perfil, confecção)
- *   - "Chat"        : mensagens entre analista e confecção
- *   - "Status"      : status de cada pedido (atualizado pela confecção)
- *   - "Alertas"     : alertas gerados automaticamente
+ *
+ * CONFIGURAÇÃO INICIAL:
+ *   1. Execute a função `setup()` uma vez para criar todas as abas com cabeçalhos.
+ *   2. Implante como Web App (executar como: eu; acesso: qualquer pessoa).
+ *   3. Copie a URL do Web App e configure no frontend (config.js) e no Streamlit.
  */
+
+// ==================== CONFIGURAÇÃO ====================
 
 const SHEET_PEDIDOS = "Pedidos";
 const SHEET_USUARIOS = "Usuarios";
 const SHEET_CHAT = "Chat";
 const SHEET_STATUS = "Status";
 const SHEET_ALERTAS = "Alertas";
+
+// ==================== SETUP (executar uma vez) ====================
+
+function setup() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // Aba Usuarios
+  let sh = ss.getSheetByName(SHEET_USUARIOS);
+  if (!sh) sh = ss.insertSheet(SHEET_USUARIOS);
+  if (sh.getLastRow() === 0) {
+    sh.appendRow(["user", "senha", "perfil", "confecao"]);
+    sh.appendRow(["admin", "admin123", "Analista", ""]);
+  }
+
+  // Aba Pedidos
+  sh = ss.getSheetByName(SHEET_PEDIDOS);
+  if (!sh) sh = ss.insertSheet(SHEET_PEDIDOS);
+  if (sh.getLastRow() === 0) {
+    sh.appendRow(["Pedido", "Cód Confec", "Confeccionado", "Qtd", "Saldo", "Dt Entrega",
+                  "Confecção", "Marca", "Status", "Prioridade", "Q.E"]);
+  }
+
+  // Aba Status
+  sh = ss.getSheetByName(SHEET_STATUS);
+  if (!sh) sh = ss.insertSheet(SHEET_STATUS);
+  if (sh.getLastRow() === 0) {
+    sh.appendRow(["pedido", "confecao", "status", "atualizado_em", "atualizado_por"]);
+  }
+
+  // Aba Chat
+  sh = ss.getSheetByName(SHEET_CHAT);
+  if (!sh) sh = ss.insertSheet(SHEET_CHAT);
+  if (sh.getLastRow() === 0) {
+    sh.appendRow(["confecao", "de", "para", "mensagem", "data"]);
+  }
+
+  // Aba Alertas
+  sh = ss.getSheetByName(SHEET_ALERTAS);
+  if (!sh) sh = ss.insertSheet(SHEET_ALERTAS);
+  if (sh.getLastRow() === 0) {
+    sh.appendRow(["confecao", "pedido", "tipo", "mensagem", "data"]);
+  }
+
+  SpreadsheetApp.getUi().alert("Setup concluído! Todas as abas foram criadas.");
+}
 
 // ==================== ENTRY POINT (Web App) ====================
 
@@ -34,8 +79,6 @@ function doGet(e) {
         return jsonResponse(getAlertas(params.token, params.confecao));
       case "getallconfeccoes":
         return jsonResponse(getAllConfeccoes(params.token));
-      case "getanalistas":
-        return jsonResponse(getAnalistas(params.token));
       default:
         return jsonResponse({ ok: false, error: "Ação não reconhecida" });
     }
@@ -103,7 +146,6 @@ function login(user, senha) {
 }
 
 function validarToken(token) {
-  // Token simples: base64(user:timestamp). Valida apenas se não vazio.
   if (!token) return null;
   try {
     const decoded = Utilities.newBlob(Utilities.base64Decode(token)).getDataAsString();
@@ -129,7 +171,7 @@ function getPerfil(user) {
   return null;
 }
 
-// ==================== ENVIO DO KANBAN (Streamlit -> Sheets) ====================
+// ==================== ENVIO DO KANBAN ====================
 
 function enviarKanban(token, dados) {
   const user = validarToken(token);
@@ -138,7 +180,6 @@ function enviarKanban(token, dados) {
   if (!perfil || perfil.perfil !== "Analista") return { ok: false, error: "Apenas analistas podem enviar o Kanban" };
 
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_PEDIDOS);
-  // Limpa dados antigos
   if (sheet.getLastRow() > 1) {
     sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).clearContent();
   }
@@ -150,7 +191,6 @@ function enviarKanban(token, dados) {
     sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
   }
 
-  // Inicializa status
   const statusSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_STATUS);
   if (statusSheet.getLastRow() > 1) {
     statusSheet.getRange(2, 1, statusSheet.getLastRow() - 1, statusSheet.getLastColumn()).clearContent();
@@ -158,7 +198,7 @@ function enviarKanban(token, dados) {
   const statusHeaders = statusSheet.getRange(1, 1, 1, statusSheet.getLastColumn()).getValues()[0];
   const statusRows = dados.map(item => statusHeaders.map(h => {
     if (h === "pedido") return item["Pedido"] || item["pedido"] || "";
-    if (h === "confecao") return item["Confecção"] || item["confeccao"] || "";
+    if (h === "confecao") return item["Confecção"] || item["confeccao"] || item["Confecao"] || "";
     if (h === "status") return "Pendente";
     if (h === "atualizado_em") return new Date();
     if (h === "atualizado_por") return "";
@@ -168,7 +208,6 @@ function enviarKanban(token, dados) {
     statusSheet.getRange(2, 1, statusRows.length, statusHeaders.length).setValues(statusRows);
   }
 
-  // Gera alertas
   gerarAlertas(dados);
 
   return { ok: true, total: dados.length };
@@ -203,7 +242,6 @@ function getPedidos(token, confecao) {
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     const conf = idxConf >= 0 ? row[idxConf] : "";
-    // Filtro por confecção (confecção vê apenas a sua)
     if (perfil.perfil === "Confecção" && String(conf).trim() !== String(perfil.confecao).trim()) {
       continue;
     }
@@ -226,9 +264,6 @@ function marcarPronto(token, pedido, confecao) {
   if (!user) return { ok: false, error: "Token inválido" };
   const perfil = getPerfil(user);
   if (!perfil) return { ok: false, error: "Usuário não encontrado" };
-  if (perfil.perfil !== "Confecção" && perfil.perfil !== "Analista") {
-    return { ok: false, error: "Sem permissão" };
-  }
 
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_STATUS);
   const data = sheet.getDataRange().getValues();
@@ -273,13 +308,7 @@ function getChat(token, confecao) {
     const conf = String(data[i][idxConf]).trim();
     if (perfil.perfil === "Confecção" && conf !== String(perfil.confecao).trim()) continue;
     if (confecao && conf !== String(confecao).trim()) continue;
-    result.push({
-      de: data[i][idxDe],
-      para: data[i][idxPara],
-      mensagem: data[i][idxMsg],
-      data: data[i][idxData],
-      confecao: conf,
-    });
+    result.push({ de: data[i][idxDe], para: data[i][idxPara], mensagem: data[i][idxMsg], data: data[i][idxData], confecao: conf });
   }
   return { ok: true, mensagens: result };
 }
@@ -308,7 +337,6 @@ function enviarMensagem(token, confecao, mensagem, destinatario) {
 
 function gerarAlertas(dados) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_ALERTAS);
-  // Limpa alertas antigos
   if (sheet.getLastRow() > 1) {
     sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).clearContent();
   }
@@ -316,7 +344,6 @@ function gerarAlertas(dados) {
   const hoje = new Date();
   const alertas = [];
   dados.forEach(item => {
-    // Alerta para prioridade Alta/Atrasado
     const prio = item["Prioridade"] || item["prioridade"] || "";
     if (prio === "Atrasado" || prio === "Alta") {
       alertas.push(headers.map(h => {
@@ -357,7 +384,7 @@ function getAlertas(token, confecao) {
   return { ok: true, alertas: result };
 }
 
-// ==================== ADMIN: CRIAR USUÁRIO ====================
+// ==================== ADMIN ====================
 
 function criarUsuario(token, user, senha, perfil, confecao) {
   const u = validarToken(token);
@@ -394,10 +421,4 @@ function getAllConfeccoes(token) {
     if (conf) set[conf] = true;
   }
   return { ok: true, confeccoes: Object.keys(set).sort() };
-}
-
-function getAnalistas(token) {
-  const user = validarToken(token);
-  if (!user) return { ok: false, error: "Token inválido" };
-  return { ok: true, user: user };
 }
