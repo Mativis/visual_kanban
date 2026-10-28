@@ -69,27 +69,28 @@ Como executar:
    ```
 
 > ⚠️ Use sempre a URL `/exec`. A URL `/dev` só funciona para você, logado, e não serve para o
-> frontend nem para o Streamlit.
+> painel nem para o Streamlit.
 
 Sempre que alterar o `Code.gs`, publique de novo:
 **Implantar → Gerenciar implantações → ✏️ → Versão: Nova versão → Implantar.** A URL continua a mesma.
 
 ---
 
-## 5. Conectar o Visual Kanban (frontend)
+## 5. Conectar o Visual Kanban (painel)
 
 Há **duas** formas — use a que preferir (a do navegador tem prioridade):
 
 **A. Pela tela de login (mais simples)**
 
-1. Abra `frontend/index.html`.
+1. Abra o painel (**Streamlit Cloud:** `https://visualkanban.streamlit.app/`; localmente:
+   `python -m streamlit run app.py`).
 2. Clique em **⚙ Configurar conexão**.
 3. Cole a URL `/exec` e clique em **Testar conexão** (deve aparecer “Conectado — versão 1.0.0”).
 4. **Salvar**. A URL fica no `localStorage` deste navegador.
 
 **B. Editando o arquivo (melhor para publicar para várias pessoas)**
 
-Abra `frontend/js/config.js` e preencha:
+Abra `static/js/config.js` e preencha:
 
 ```js
 window.VK_CONFIG = {
@@ -101,24 +102,39 @@ window.VK_CONFIG = {
 };
 ```
 
-Pronto: ao abrir o `index.html`, o campo já vem preenchido para todos.
+Pronto: ao abrir o painel, o campo já vem preenchido para todos.
 
-### Publicar o frontend
+### Publicar no Streamlit Cloud (esta implantação)
 
-A pasta `frontend/` é estática. Opções:
+O painel é estático, mas o Streamlit Cloud pode servi-lo:
 
-* **GitHub Pages:** repositório `visual_kanban` → *Settings → Pages → Branch `main`, pasta `/frontend`*.
-* **Netlify/Vercel:** arraste a pasta `frontend`.
+1. Crie o app apontando para o repositório `visual_kanban`, branch `main`.
+2. Em **Settings → Main file path**, use **`app.py`**.
+3. O repositório já traz `.streamlit/config.toml` com `server.enableStaticServing = true`;
+   o `app.py` redireciona para o painel em `/app/static/index.html`.
+4. Abra a URL do app (`https://visualkanban.streamlit.app/`) — ela abre o login do painel.
+
+> Se o app foi criado com outro arquivo principal (por exemplo,
+> `streamlit_integration/enviar_kanban.py`), troque para `app.py`; senão a página fica em branco.
+
+### Outras hospedagens (opcional)
+
+A pasta `static/` é estática. Opções:
+
+* **GitHub Pages:** publique o **conteúdo** de `static/` (por exemplo, copie para `/docs` e
+  selecione a pasta `/docs`, ou use um workflow de GitHub Actions). O GitHub Pages não serve
+  uma subpasta arbitrária como `/static`.
+* **Netlify/Vercel:** use `static` como *publish directory*.
 * **Servidor interno / celular na mesma rede:**
 
   ```bash
-  python -m http.server 8080 --directory frontend
+  python -m http.server 8080 --directory static
   # computador: http://localhost:8080
   # celular:    http://IP-DO-PC:8080
   ```
 
-> O frontend precisa de **HTTPS** (ou `localhost`) para o `localStorage` funcionar em alguns
-> navegadores. GitHub Pages/Netlify já resolvem.
+> O painel precisa de **HTTPS** (ou `localhost`) para o `localStorage` funcionar em alguns
+> navegadores. Streamlit Cloud/GitHub Pages/Netlify já resolvem.
 
 ---
 
@@ -263,7 +279,7 @@ saíram do quadro deixam de aparecer. O status de cada pedido, porém, é preser
 | Confecção não vê pedidos | usuário sem `codigo_confeccao` ou código diferente | **Administração → Usuários → Editar** e selecione a confecção |
 | Envio diz “Apenas analistas…” | usuário do Streamlit não é Analista | use um usuário com perfil Analista |
 | Status “some” após novo envio | opção **Reiniciar status** marcada ou `Cód Confec`/`Compra` alterados na origem | desmarque a opção; o vínculo do status usa `Compra + Cód Confec + confecção` |
-| Erro de CORS no console | POST bloqueado pela rede | o frontend já tenta GET como fallback; verifique se a implantação é pública |
+| Erro de CORS no console | POST bloqueado pela rede | o painel já tenta GET como fallback; verifique se a implantação é pública |
 | Planilha com dados estranhos | abas editadas à mão | não renomeie/ordene colunas; o cabeçalho é gerado pelo `setup()` |
 
 ---

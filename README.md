@@ -5,7 +5,11 @@ Sistema de acompanhamento da produção das confecções, separado do Visualfil 
 O Visualfil continua sendo a fonte dos pedidos. Quando o analista clica em **“Enviar Kanban”**, os
 dados são gravados numa planilha do Google Sheets. Este projeto lê e escreve nessa planilha através
 de um **Web App do Google Apps Script** — é isso que permite o Kanban rodar em qualquer navegador,
-inclusive no celular da confecção, sem precisar do Streamlit ligado.
+inclusive no celular da confecção, sem depender do app do Visualfil.
+
+O painel é **100% estático** (HTML/CSS/JS). Nesta implantação ele é servido pelo Streamlit Cloud
+apenas como hospedagem (`app.py` + `static/`), mas continua podendo ser publicado em qualquer
+servidor estático (GitHub Pages, Netlify, servidor interno…).
 
 ```
 Visualfil (Streamlit)  ──"Enviar Kanban"──▶  Google Sheets  ◀──API JSON──▶  Visual Kanban (este repo)
@@ -21,7 +25,10 @@ visual_kanban/
 ├── appscript/
 │   ├── Code.gs           API completa (login, kanban, chat, admin)
 │   └── appsscript.json   manifesto (V8, fuso America/Sao_Paulo)
-├── frontend/
+├── app.py                entrada do Streamlit (redireciona para o painel)
+├── .streamlit/
+│   └── config.toml       habilita o static serving do Streamlit
+├── static/
 │   ├── index.html        login + configuração da conexão
 │   ├── app.html          painel (Kanban · Chat · Alertas · Administração)
 │   ├── css/style.css
@@ -39,8 +46,9 @@ visual_kanban/
 └── README.md
 ```
 
-> O frontend é **100% estático** (sem build, sem npm). Basta abrir o `index.html` ou publicar a
-> pasta `frontend/` em qualquer hospedagem estática (GitHub Pages, Netlify, servidor interno…).
+> O painel é **100% estático** (sem build, sem npm). A pasta `static/` pode ser publicada em
+> qualquer hospedagem estática; no Streamlit Cloud, o `app.py` redireciona para
+> `/app/static/index.html`.
 
 ---
 
@@ -96,7 +104,7 @@ Criadas automaticamente por `setup()`:
 
 ## API (Apps Script)
 
-Todas as chamadas são `POST` com JSON. O frontend envia como `text/plain` (evita o preflight CORS do
+Todas as chamadas são `POST` com JSON. O painel envia como `text/plain` (evita o preflight CORS do
 Apps Script) e, se a rede bloquear, repete via `GET ?payload=<json>`.
 
 Ações: `ping`, `login`, `logout`, `sessao`, `trocarsenha`, `listarpedidos`, `atualizarstatus`,
@@ -112,16 +120,23 @@ Ações: `ping`, `login`, `logout`, `sessao`, `trocarsenha`, `listarpedidos`, `a
 ## Rodando localmente
 
 1. Siga o **[SETUP.md](SETUP.md)** para criar a planilha e publicar o Apps Script.
-2. Preencha `frontend/js/config.js` com a URL do Web App **ou** use “⚙ Configurar conexão” na tela de
+2. Preencha `static/js/config.js` com a URL do Web App **ou** use “⚙ Configurar conexão” na tela de
    login (a URL fica salva no navegador).
-3. Abra `frontend/index.html` no navegador.
+3. Abra o painel:
 
-Para servir via HTTP (recomendado, inclusive para testar no celular):
+   ```bash
+   # Opção A — pelo Streamlit (redireciona para o painel)
+   python -m streamlit run app.py
+   # http://localhost:8501
 
-```bash
-python -m http.server 8080 --directory frontend
-# http://localhost:8080
-```
+   # Opção B — servindo a pasta estática diretamente
+   python -m http.server 8080 --directory static
+   # http://localhost:8080
+   ```
+
+No Streamlit Cloud, o app roda a partir de `app.py` e a URL pública
+(`https://visualkanban.streamlit.app/`) abre o painel. Se o app foi criado com outro
+arquivo principal, troque em **Settings → Main file path** para `app.py`.
 
 Login inicial: **admin / admin123** — troque a senha no primeiro acesso (menu do usuário).
 

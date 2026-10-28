@@ -5,7 +5,7 @@
  *  Banco de dados: Google Sheets.
  *  Consumido por:
  *    - Streamlit "Visualfil" (botão Enviar Kanban)
- *    - Frontend estático (frontend/index.html)
+ *    - Frontend estático (static/index.html)
  *
  *  PRIMEIROS PASSOS
  *    1. Extensões > Apps Script > cole este arquivo.

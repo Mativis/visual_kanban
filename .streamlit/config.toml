@@ -1,0 +1,7 @@
+[server]
+# Necessário para o Streamlit servir o painel estático em /app/static/.
+# O app.py redireciona para /app/static/index.html.
+enableStaticServing = true
+
+[theme]
+base = "dark"
