@@ -1,66 +1,80 @@
-// auth.js - gerenciamento de sessão
-// API_URL é definida em config.js
+/* ==========================================================================
+   Visual Kanban · tela de login
+   ========================================================================== */
+(function () {
+  "use strict";
 
-function getToken() { return localStorage.getItem('vk_token'); }
-function getUser() { return JSON.parse(localStorage.getItem('vk_user') || 'null'); }
-function setSession(token, user) { localStorage.setItem('vk_token', token); localStorage.setItem('vk_user', JSON.stringify(user)); }
-function clearSession() { localStorage.removeItem('vk_token'); localStorage.removeItem('vk_user'); }
+  var VK = window.VK;
+  var form = VK.$("#form-login");
+  if (!form) return;
 
-async function apiGet(action, params = {}) {
-    const token = getToken();
-    const qs = new URLSearchParams({ action, token, ...params });
-    const res = await fetch(`${API_URL}?${qs}`);
-    return res.json();
-}
+  var campoUser = VK.$("#login-user");
+  var campoSenha = VK.$("#login-senha");
+  var erro = VK.$("#login-erro");
+  var botao = VK.$("#btn-entrar");
+  var urlAtual = VK.$("#url-atual");
 
-async function apiPost(action, body = {}) {
-    const token = getToken();
-    const res = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, token, ...body }),
-    });
-    return res.json();
-}
+  // Já autenticado? Vai direto para o painel.
+  var sessao = VK.session();
+  if (sessao && sessao.token) {
+    VK.call("sessao")
+      .then(function () { location.replace("app.html"); })
+      .catch(function () { VK.logoutLocal(); });
+  }
 
-// Login page
-const loginForm = document.getElementById('login-form');
-if (loginForm) {
-    loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const user = document.getElementById('user').value;
-        const senha = document.getElementById('senha').value;
-        const errEl = document.getElementById('login-error');
-        errEl.textContent = '';
-        try {
-            const res = await fetch(API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'login', user, senha }),
-            });
-            const data = await res.json();
-            if (data.ok) {
-                setSession(data.token, { user: data.user, perfil: data.perfil, confecao: data.confecao });
-                window.location.href = 'kanban.html';
-            } else {
-                errEl.textContent = data.error || 'Falha no login';
-            }
-        } catch (err) {
-            errEl.textContent = 'Erro de conexão: ' + err.message;
-        }
-    });
-}
+  if (urlAtual) {
+    urlAtual.textContent = VK.config.apiUrl || "não configurada";
+    urlAtual.title = VK.config.apiUrl || "";
+  }
 
-// Kanban page auth check
-if (window.location.pathname.endsWith('kanban.html')) {
-    const user = getUser();
-    if (!getToken() || !user) {
-        window.location.href = 'index.html';
-    } else {
-        document.getElementById('user-info').textContent = `${user.user} (${user.perfil})`;
+  // Mensagem quando a sessão expira
+  if (/[?&]expirou=1/.test(location.search)) {
+    erro.textContent = "Sua sessão expirou. Entre novamente.";
+  }
+
+  VK.iniciarDialogoConexao();
+
+  form.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    erro.textContent = "";
+
+    var user = campoUser.value.trim();
+    var senha = campoSenha.value;
+
+    if (!user || !senha) {
+      erro.textContent = "Informe usuário e senha.";
+      return;
     }
-    document.getElementById('btn-logout').addEventListener('click', () => {
-        clearSession();
-        window.location.href = 'index.html';
-    });
-}
+    if (!VK.config.apiUrl) {
+      erro.textContent = "Conexão não configurada. Clique em “Configurar conexão”.";
+      return;
+    }
+
+    botao.disabled = true;
+    botao.innerHTML = '<span class="spinner"></span> Entrando…';
+
+    VK.call("login", { user: user, senha: senha }, { timeout: 25000 })
+      .then(function (r) {
+        var u = r.usuario || {};
+        VK.setSession({
+          token: r.token,
+          expira_em: r.expira_em,
+          user: u.user,
+          nome: u.nome,
+          perfil: u.perfil,
+          codigo_confeccao: u.codigo_confeccao || "",
+          nome_confeccao: u.nome_confeccao || "",
+        });
+        location.replace("app.html");
+      })
+      .catch(function (e) {
+        erro.textContent = e.message;
+        botao.disabled = false;
+        botao.textContent = "Entrar";
+        campoSenha.focus();
+        campoSenha.select();
+      });
+  });
+
+  campoUser.focus();
+})();

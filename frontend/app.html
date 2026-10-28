@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <title>Visual Kanban · Painel</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="app-body">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo-mark sm">VK</span>
+      <div>
+        <strong>Visual Kanban</strong>
+        <small id="brand-sub">painel</small>
+      </div>
+    </div>
+
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-tab="kanban">Kanban</button>
+      <button class="tab" data-tab="chat">Chat <span class="badge neutro hide" id="badge-chat">0</span></button>
+      <button class="tab" data-tab="alertas">Alertas <span class="badge neutro hide" id="badge-alertas">0</span></button>
+      <button class="tab hide" id="tab-admin" data-tab="admin">Administração</button>
+    </nav>
+
+    <div class="topbar-right">
+      <span class="sync" id="sync-info"></span>
+      <div class="user-menu">
+        <button class="user-chip" id="btn-user" type="button">
+          <span class="avatar" id="user-avatar">?</span>
+          <span class="user-name" id="user-name">…</span>
+          <span class="role" id="user-role">…</span>
+        </button>
+        <div class="dropdown hide" id="user-dropdown">
+          <div class="dd-head">
+            <strong id="dd-nome">…</strong>
+            <small id="dd-conf"></small>
+          </div>
+          <button type="button" data-act="senha">Trocar senha</button>
+          <button type="button" data-act="conexao">Configurar conexão</button>
+          <button type="button" data-act="sair" class="danger">Sair</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="app-main">
+
+    <!-- ============================ KANBAN ============================ -->
+    <section id="view-kanban" class="view">
+      <div class="kpi-row" id="kpis"></div>
+
+      <div class="toolbar">
+        <div class="filters">
+          <input class="input" id="f-busca" type="search" placeholder="Buscar pedido, código, produto…">
+          <select class="select" id="f-prioridade">
+            <option value="">Prioridade: todas</option>
+            <option value="Atrasado">Atrasado</option>
+            <option value="Alta">Alta</option>
+            <option value="Média">Média</option>
+            <option value="Baixa">Baixa</option>
+          </select>
+          <select class="select hide" id="f-conf"></select>
+          <select class="select" id="f-ordem">
+            <option value="data">Ordenar: entrega</option>
+            <option value="prioridade">Ordenar: prioridade</option>
+            <option value="qtd">Ordenar: quantidade</option>
+            <option value="pedido">Ordenar: pedido</option>
+          </select>
+          <label class="check" id="lbl-atrasados">
+            <input type="checkbox" id="f-atrasados"> Só atrasados
+          </label>
+          <label class="check on" id="lbl-ocultar">
+            <input type="checkbox" id="f-ocultar" checked> Ocultar entregues
+          </label>
+        </div>
+        <div class="tools">
+          <button class="btn ghost" id="btn-exportar" type="button">⤓ CSV</button>
+          <button class="btn ghost" id="btn-atualizar" type="button">↻ Atualizar</button>
+        </div>
+      </div>
+
+      <div class="board" id="board"></div>
+      <p class="hint" id="board-hint" style="margin-top:10px"></p>
+    </section>
+
+    <!-- ============================= CHAT ============================= -->
+    <section id="view-chat" class="view hide">
+      <div class="chat-layout">
+        <aside class="threads-pane">
+          <div class="pane-head">
+            <strong>Conversas</strong>
+            <span class="count" id="threads-count"></span>
+          </div>
+          <div style="padding:8px 8px 0">
+            <input class="input" id="f-thread" type="search" placeholder="Buscar confecção…">
+          </div>
+          <div class="threads" id="threads"></div>
+        </aside>
+
+        <section class="conv-pane">
+          <header class="conv-head">
+            <span class="avatar" id="conv-avatar">?</span>
+            <div class="info">
+              <strong id="conv-nome">Selecione uma conversa</strong>
+              <small id="conv-sub"></small>
+            </div>
+            <button class="btn ghost sm" id="btn-chat-atualizar" type="button">↻</button>
+          </header>
+          <div class="messages" id="messages"></div>
+          <form class="composer" id="form-msg">
+            <textarea id="msg-input" rows="1" placeholder="Escreva uma mensagem…  (Enter envia · Shift+Enter quebra linha)"></textarea>
+            <button class="btn primary" type="submit" id="btn-enviar-msg">Enviar</button>
+          </form>
+        </section>
+      </div>
+    </section>
+
+    <!-- ============================ ALERTAS =========================== -->
+    <section id="view-alertas" class="view hide">
+      <div class="section-head">
+        <div>
+          <h2>Alertas</h2>
+          <p>Prazos, prioridades e pendências identificadas no Kanban.</p>
+        </div>
+        <button class="btn ghost" id="btn-alertas-atualizar" type="button">↻ Atualizar</button>
+      </div>
+      <div class="alerts" id="alerts-list"></div>
+    </section>
+
+    <!-- ========================= ADMINISTRAÇÃO ======================== -->
+    <section id="view-admin" class="view hide">
+      <div class="grid-2">
+        <article class="panel">
+          <header>
+            <div>
+              <h3>Usuários</h3>
+              <div class="sub">Analistas e confecções com acesso ao painel</div>
+            </div>
+            <div class="acoes">
+              <button class="btn primary sm" id="btn-novo-usuario" type="button">+ Novo usuário</button>
+            </div>
+          </header>
+          <div class="corpo tabela" id="tabela-usuarios"></div>
+        </article>
+
+        <article class="panel">
+          <header>
+            <div>
+              <h3>Confecções</h3>
+              <div class="sub">Código de vínculo, aliases e pedidos</div>
+            </div>
+            <div class="acoes">
+              <button class="btn ghost sm" id="btn-atualizar-conf" type="button">↻</button>
+            </div>
+          </header>
+          <div class="corpo tabela" id="tabela-confeccoes"></div>
+        </article>
+      </div>
+
+      <p class="hint" style="margin-top:14px">
+        O <strong>código</strong> é gerado automaticamente a partir do nome da confecção enviado pelo
+        Visualfil. Use os <strong>aliases</strong> quando o nome mudar na planilha de origem — o histórico
+        de status e do chat permanece vinculado ao mesmo código.
+      </p>
+    </section>
+
+  </main>
+
+  <!-- ======================= DIÁLOGOS ======================= -->
+
+  <dialog id="dlg-conexao">
+    <form id="form-conexao" method="dialog">
+      <header class="dlg-head">
+        <h3>Conexão com o Google Sheets</h3>
+        <button class="fechar" type="button" onclick="VK.fecharDialogo('dlg-conexao')">×</button>
+      </header>
+      <div class="dlg-body">
+        <div class="field">
+          <label for="conexao-url">URL do Web App (Apps Script)</label>
+          <input class="input" id="conexao-url" type="url" spellcheck="false"
+                 placeholder="https://script.google.com/macros/s/…/exec">
+          <span class="hint">Apps Script → Implantar → Nova implantação → App da Web (termina em <code>/exec</code>).</span>
+        </div>
+        <div class="erro" id="conexao-msg"></div>
+      </div>
+      <footer class="dlg-foot">
+        <button class="btn ghost" type="button" id="btn-testar-conexao">Testar conexão</button>
+        <button class="btn primary" type="submit">Salvar</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-senha">
+    <form id="form-senha">
+      <header class="dlg-head">
+        <h3>Trocar senha</h3>
+        <button class="fechar" type="button" onclick="VK.fecharDialogo('dlg-senha')">×</button>
+      </header>
+      <div class="dlg-body">
+        <div class="field">
+          <label for="senha-atual">Senha atual</label>
+          <input class="input" id="senha-atual" type="password" autocomplete="current-password" required>
+        </div>
+        <div class="field">
+          <label for="senha-nova">Nova senha</label>
+          <input class="input" id="senha-nova" type="password" autocomplete="new-password" minlength="6" required>
+        </div>
+        <div class="field">
+          <label for="senha-conf">Confirmar nova senha</label>
+          <input class="input" id="senha-conf" type="password" autocomplete="new-password" minlength="6" required>
+        </div>
+        <div class="erro" id="senha-msg"></div>
+      </div>
+      <footer class="dlg-foot">
+        <button class="btn ghost" type="button" onclick="VK.fecharDialogo('dlg-senha')">Cancelar</button>
+        <button class="btn primary" type="submit">Salvar</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-pedido" class="dlg-larga">
+    <header class="dlg-head">
+      <h3 id="pedido-titulo">Pedido</h3>
+      <button class="fechar" type="button" onclick="VK.fecharDialogo('dlg-pedido')">×</button>
+    </header>
+    <div class="dlg-body" id="pedido-corpo"></div>
+    <footer class="dlg-foot" id="pedido-acoes"></footer>
+  </dialog>
+
+  <dialog id="dlg-usuario">
+    <form id="form-usuario">
+      <header class="dlg-head">
+        <h3 id="usuario-titulo">Novo usuário</h3>
+        <button class="fechar" type="button" onclick="VK.fecharDialogo('dlg-usuario')">×</button>
+      </header>
+      <div class="dlg-body">
+        <div class="field">
+          <label for="u-user">Login</label>
+          <input class="input" id="u-user" type="text" autocomplete="off" spellcheck="false"
+                 placeholder="ex.: joao.silva" required>
+          <span class="hint">3 a 40 caracteres: letras sem acento, números, ponto, hífen ou _.</span>
+        </div>
+        <div class="field">
+          <label for="u-nome">Nome exibido</label>
+          <input class="input" id="u-nome" type="text" placeholder="ex.: João Silva">
+        </div>
+        <div class="field">
+          <label for="u-perfil">Perfil</label>
+          <select class="select" id="u-perfil">
+            <option value="Confecção">Confecção</option>
+            <option value="Analista">Analista</option>
+          </select>
+        </div>
+        <div class="field" id="campo-conf">
+          <label for="u-conf">Confecção vinculada</label>
+          <select class="select" id="u-conf"></select>
+        </div>
+        <div class="field">
+          <label for="u-senha" id="u-senha-label">Senha</label>
+          <input class="input" id="u-senha" type="text" autocomplete="off" spellcheck="false">
+          <span class="hint" id="u-senha-hint">Mínimo 6 caracteres. Informe ao usuário e peça para trocar no primeiro acesso.</span>
+        </div>
+        <div class="field" id="campo-ativo">
+          <label class="check on" style="height:auto;padding:9px 11px">
+            <input type="checkbox" id="u-ativo" checked> Usuário ativo
+          </label>
+        </div>
+        <div class="erro" id="usuario-msg"></div>
+      </div>
+      <footer class="dlg-foot">
+        <button class="btn ghost" type="button" onclick="VK.fecharDialogo('dlg-usuario')">Cancelar</button>
+        <button class="btn primary" type="submit">Salvar usuário</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-confeccao">
+    <form id="form-confeccao">
+      <header class="dlg-head">
+        <h3>Editar confecção</h3>
+        <button class="fechar" type="button" onclick="VK.fecharDialogo('dlg-confeccao')">×</button>
+      </header>
+      <div class="dlg-body">
+        <div class="field">
+          <label>Código de vínculo</label>
+          <div class="codigo" id="c-codigo">—</div>
+          <span class="hint">Não muda. É o elo entre os pedidos enviados e o usuário da confecção.</span>
+        </div>
+        <div class="field">
+          <label for="c-nome">Nome</label>
+          <input class="input" id="c-nome" type="text" required>
+        </div>
+        <div class="field">
+          <label for="c-aliases">Aliases (nomes antigos)</label>
+          <input class="input" id="c-aliases" type="text" placeholder="NOME ANTIGO 1 | NOME ANTIGO 2">
+          <span class="hint">Separe por <code>|</code>. Pedidos enviados com esses nomes caem neste mesmo código.</span>
+        </div>
+        <div class="field">
+          <label class="check on" style="height:auto;padding:9px 11px">
+            <input type="checkbox" id="c-ativo" checked> Confecção ativa
+          </label>
+        </div>
+        <div class="erro" id="confeccao-msg"></div>
+      </div>
+      <footer class="dlg-foot">
+        <button class="btn ghost" type="button" onclick="VK.fecharDialogo('dlg-confeccao')">Cancelar</button>
+        <button class="btn primary" type="submit">Salvar</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <div class="toasts" id="toasts"></div>
+
+  <script src="js/config.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/kanban.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

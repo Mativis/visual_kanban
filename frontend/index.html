@@ -1,31 +1,92 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visual Kanban — Login</title>
-    <link rel="stylesheet" href="css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <title>Visual Kanban · Entrar</title>
+  <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="login-page">
-    <div class="login-container">
-        <div class="login-card">
-            <h1>📋 Visual Kanban</h1>
-            <p class="subtitle">Acompanhamento de confecção</p>
-            <form id="login-form">
-                <div class="form-group">
-                    <label for="user">Usuário</label>
-                    <input type="text" id="user" required autocomplete="username">
-                </div>
-                <div class="form-group">
-                    <label for="senha">Senha</label>
-                    <input type="password" id="senha" required autocomplete="current-password">
-                </div>
-                <button type="submit" class="btn-primary">Entrar</button>
-                <div id="login-error" class="error-msg"></div>
-            </form>
+<body class="login-body">
+  <main class="login-shell">
+    <section class="login-brand">
+      <div class="logo-mark">VK</div>
+      <div>
+        <h1>Visual Kanban</h1>
+        <p>Acompanhamento da produção das confecções, direto do Visualfil para o chão de fábrica.</p>
+      </div>
+
+      <ul class="brand-list">
+        <li><span class="tick">✓</span><span>Kanban ao vivo com a demanda de cada confecção</span></li>
+        <li><span class="tick">✓</span><span>Confecção sinaliza <strong>em produção</strong> e <strong>pronto</strong></span></li>
+        <li><span class="tick">✓</span><span>Alertas de atraso, prazo e prioridade</span></li>
+        <li><span class="tick">✓</span><span>Chat direto entre analista e confecção</span></li>
+      </ul>
+
+      <div class="brand-foot">Dados sincronizados pelo botão “Enviar Kanban” do Visualfil.</div>
+    </section>
+
+    <section class="login-card">
+      <h2>Entrar</h2>
+      <p class="sub">Use o usuário e a senha cadastrados pelo analista.</p>
+
+      <form id="form-login" autocomplete="on" novalidate>
+        <div class="field">
+          <label for="login-user">Usuário</label>
+          <input class="input" id="login-user" name="username" type="text"
+                 autocomplete="username" autocapitalize="none" spellcheck="false" required>
         </div>
-    </div>
-    <script src="js/config.js"></script>
-    <script src="js/auth.js"></script>
+        <div class="field">
+          <label for="login-senha">Senha</label>
+          <input class="input" id="login-senha" name="password" type="password"
+                 autocomplete="current-password" required>
+        </div>
+
+        <button class="btn primary block" id="btn-entrar" type="submit">Entrar</button>
+        <div class="erro" id="login-erro" role="alert"></div>
+      </form>
+
+      <div class="rodape">
+        <button class="btn link" data-abrir-conexao type="button">⚙ Configurar conexão</button>
+        <span class="hint" id="url-atual">não configurada</span>
+      </div>
+
+      <p class="hint" style="margin-top:14px">
+        Esqueceu a senha? Solicite a redefinição ao analista responsável.
+      </p>
+    </section>
+  </main>
+
+  <!-- Configuração da API -->
+  <dialog id="dlg-conexao">
+    <form id="form-conexao" method="dialog">
+      <header class="dlg-head">
+        <h3>Conexão com o Google Sheets</h3>
+        <button class="fechar" type="button" onclick="VK.fecharDialogo('dlg-conexao')">×</button>
+      </header>
+      <div class="dlg-body">
+        <div class="field">
+          <label for="conexao-url">URL do Web App (Apps Script)</label>
+          <input class="input" id="conexao-url" type="url" spellcheck="false"
+                 placeholder="https://script.google.com/macros/s/…/exec">
+          <span class="hint">
+            Apps Script → Implantar → Nova implantação → App da Web.
+            A URL deve terminar em <code>/exec</code>.
+          </span>
+        </div>
+        <div class="erro" id="conexao-msg"></div>
+      </div>
+      <footer class="dlg-foot">
+        <button class="btn ghost" type="button" id="btn-testar-conexao">Testar conexão</button>
+        <button class="btn primary" type="submit">Salvar</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <div class="toasts" id="toasts"></div>
+
+  <script src="js/config.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/auth.js"></script>
 </body>
 </html>

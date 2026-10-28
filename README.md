@@ -1,69 +1,137 @@
-# Visual Kanban — Sistema de Acompanhamento de Confecção
+# Visual Kanban
 
-Sistema independente de visualização de Kanban, alimentado pelo sistema Streamlit via Google Sheets (AppScript).
+Sistema de acompanhamento da produção das confecções, separado do Visualfil (Streamlit).
 
-## Arquitetura
+O Visualfil continua sendo a fonte dos pedidos. Quando o analista clica em **“Enviar Kanban”**, os
+dados são gravados numa planilha do Google Sheets. Este projeto lê e escreve nessa planilha através
+de um **Web App do Google Apps Script** — é isso que permite o Kanban rodar em qualquer navegador,
+inclusive no celular da confecção, sem precisar do Streamlit ligado.
 
 ```
-Streamlit (Kanban)  ──►  Google Sheets (AppScript)  ──►  Visual Kanban (Frontend)
-     "Enviar Kanban"         Banco de dados              HTML/JS/CSS
+Visualfil (Streamlit)  ──"Enviar Kanban"──▶  Google Sheets  ◀──API JSON──▶  Visual Kanban (este repo)
+        pedidos                              (banco de dados)                HTML/CSS/JS estático
 ```
 
-## Funcionalidades
+---
 
-- ✅ **Kanban interativo** — colunas: Pendente, Em andamento, Pronto
-- ✅ **Marcar pedidos como prontos** — a confecção sinaliza conclusão
-- ✅ **Alertas** — prioridade Alta/Atrasado gera alertas automáticos
-- ✅ **Permissões** — Analista (vê tudo) e Confecção (vê apenas a sua demanda)
-- ✅ **Chat direto** — comunicação entre Analista e Confecção
-- ✅ **Usuário e senha** — autenticação via Google Sheets
-
-## Configuração
-
-### 1. Google Sheets
-Crie uma planilha Google com as abas: Usuarios, Pedidos, Status, Chat, Alertas.
-
-### 2. Google Apps Script
-1. Na planilha Google, vá em **Extensões → Apps Script**.
-2. Cole o conteúdo de `appscript/Code.gs`.
-3. Execute a função `setup()` para criar todas as abas com cabeçalhos.
-4. Implante como **Web App** (executar como: eu; acesso: qualquer pessoa).
-5. Copie a URL do Web App.
-
-### 3. Vinculação (cadastro da confecção)
-A vinculação é feita pelo **nome da confecção**:
-- No Streamlit, a coluna `Confecção` do Kanban contém o nome (ex: "VESTIS CONFECCOES LTDA")
-- No Google Sheets (aba "Usuarios"), o campo `confecao` deve ter o **mesmo nome**
-- Cada confecção vê **somente** os pedidos onde `Confecção` == seu nome cadastrado
-
-### 4. Frontend
-Configure a URL do AppScript em `frontend/js/config.js` (variável `API_URL`).
-Abra `frontend/index.html` no navegador.
-
-### 5. Streamlit — Enviar Kanban
-No `kanban_confeccao.py` do Visualfil, adicione:
-```python
-from visual_kanban.streamlit_integration.enviar_kanban import botao_enviar_kanban
-botao_enviar_kanban(df_kanban)
-```
-Cole a URL do Web App quando solicitado.
-
-## Estrutura de pastas
+## O que tem aqui
 
 ```
 visual_kanban/
 ├── appscript/
-│   └── Code.gs              # Backend Google Apps Script
+│   ├── Code.gs           API completa (login, kanban, chat, admin)
+│   └── appsscript.json   manifesto (V8, fuso America/Sao_Paulo)
 ├── frontend/
-│   ├── index.html           # Login
-│   ├── kanban.html          # Painel Kanban interativo
-│   ├── css/style.css        # Estilos
+│   ├── index.html        login + configuração da conexão
+│   ├── app.html          painel (Kanban · Chat · Alertas · Administração)
+│   ├── css/style.css
 │   └── js/
-│       ├── config.js        # URL do AppScript (configurar aqui)
-│       ├── auth.js          # Autenticação
-│       ├── kanban.js        # Kanban board
-│       └── chat.js          # Chat
+│       ├── config.js     URL da API e intervalos de atualização
+│       ├── core.js       cliente HTTP, sessão, utilitários, toasts
+│       ├── auth.js       login
+│       ├── app.js        navegação, cabeçalho, alertas, polling
+│       ├── kanban.js     quadro, filtros, drag & drop, detalhe, CSV
+│       ├── chat.js       conversas analista ↔ confecção
+│       └── admin.js      usuários e confecções
 ├── streamlit_integration/
-│   └── enviar_kanban.py     # Botão para Streamlit
+│   └── enviar_kanban.py  cópia de referência do módulo do Visualfil
+├── SETUP.md              passo a passo de instalação
 └── README.md
 ```
+
+> O frontend é **100% estático** (sem build, sem npm). Basta abrir o `index.html` ou publicar a
+> pasta `frontend/` em qualquer hospedagem estática (GitHub Pages, Netlify, servidor interno…).
+
+---
+
+## Funcionalidades
+
+| Área | O que faz |
+|---|---|
+| **Kanban** | Colunas *A produzir → Em produção → Pronto → Entregue*, com filtros por confecção, prioridade, busca, “só atrasados” e ordenação. Drag & drop e botões. |
+| **Confecção** | Vê **somente a sua demanda**. Pode sinalizar *Em produção* e *Pronto* (e voltar atrás). Não consegue marcar *Entregue* — isso é confirmação do analista. |
+| **Analista** | Vê todas as confecções, move qualquer pedido, confirma entrega, exporta CSV e administra usuários/confecções. |
+| **Alertas** | Derivados do quadro (sem tabela extra): atrasos, entregas em até 3 dias, prioridade alta parada e pedidos sem confecção. |
+| **Chat** | Conversa direta entre analista e confecção, com contador de não lidas e marcação automática de leitura. |
+| **Administração** | Cria/edita/desativa usuários, redefine senhas, edita nomes/aliases das confecções e copia o **código de vínculo**. |
+| **Sessão** | Token de 12 h com renovação deslizante; senhas com SHA-256 + salt por usuário. |
+
+---
+
+## O vínculo da confecção (importante)
+
+Cada confecção precisa existir **igual nos dois sistemas**. O elo é um **código estável** gerado a
+partir do nome:
+
+```
+"J.C. MACEDO'S INDÚSTRIA E COMERCIO DE CONFECCOES EIRELI"
+        └──▶  J C MACEDO S INDUSTRIA E COMERCIO DE CONFECCOES EIRELI
+        └──▶  J-C-MACEDO-S-INDUSTRIA-E-COMERCIO-DE-CONFECCOES-EIRELI   (código)
+```
+
+* O código é gerado no Apps Script (`gerarCodigoConfeccao`) e replicado no Python (`codigo_confeccao`).
+* Na aba **Confeccoes** você pode cadastrar **aliases** (nomes antigos). Se o nome mudar na planilha
+  de origem, os pedidos continuam caindo no mesmo código — e o histórico de status/chat é preservado.
+* O usuário da confecção é cadastrado com `perfil = Confecção` e `codigo_confeccao = <código>`.
+* Para descobrir o código, use **Administração → Confecções** ou a tabela mostrada no painel
+  “Enviar Kanban” do Visualfil.
+
+---
+
+## Abas da planilha
+
+Criadas automaticamente por `setup()`:
+
+| Aba | Conteúdo |
+|---|---|
+| `Pedidos` | um registro por pedido enviado (chave estável, status, quem moveu e quando) |
+| `Usuarios` | login, nome, perfil, código da confecção, hash da senha, salt, ativo |
+| `Sessoes` | token, usuário, criação, expiração |
+| `Confeccoes` | código, nome, aliases, ativo |
+| `Chat` | mensagens (`codigo_confeccao`, de, para, perfil, texto, lida) |
+| `Log` | auditoria simples de ações |
+| `Config` | `ultimo_envio`, `versao` |
+
+---
+
+## API (Apps Script)
+
+Todas as chamadas são `POST` com JSON. O frontend envia como `text/plain` (evita o preflight CORS do
+Apps Script) e, se a rede bloquear, repete via `GET ?payload=<json>`.
+
+Ações: `ping`, `login`, `logout`, `sessao`, `trocarsenha`, `listarpedidos`, `atualizarstatus`,
+`resumo`, `notificacoes`, `listarmensagens`, `enviarmensagem`, `marcarlidas`, `listarusuarios`,
+`criarusuario`, `atualizarusuario`, `excluirusuario`, `listarconfeccoes`, `atualizarconfeccao`,
+`enviarkanban`.
+
+`enviarkanban` aceita `token` **ou** `user` + `senha` (é o que o Streamlit usa) e exige perfil
+`Analista`.
+
+---
+
+## Rodando localmente
+
+1. Siga o **[SETUP.md](SETUP.md)** para criar a planilha e publicar o Apps Script.
+2. Preencha `frontend/js/config.js` com a URL do Web App **ou** use “⚙ Configurar conexão” na tela de
+   login (a URL fica salva no navegador).
+3. Abra `frontend/index.html` no navegador.
+
+Para servir via HTTP (recomendado, inclusive para testar no celular):
+
+```bash
+python -m http.server 8080 --directory frontend
+# http://localhost:8080
+```
+
+Login inicial: **admin / admin123** — troque a senha no primeiro acesso (menu do usuário).
+
+---
+
+## Segurança
+
+* Senhas nunca são gravadas em texto: `SHA-256(salt + "::" + senha)`, salt aleatório por usuário.
+* Sessões expiram em 12 h e são renovadas a cada uso; trocar a senha encerra as outras sessões.
+* O Web App precisa ser publicado com acesso **“Qualquer pessoa”** (o controle de acesso é feito pela
+  API, com token). Não use a URL `/dev` em produção.
+* Toda ação administrativa é validada no servidor (`perfil === "Analista"`), não apenas na interface.
+* A planilha em si deve ficar restrita à conta que hospeda o Apps Script.
