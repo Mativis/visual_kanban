@@ -57,7 +57,7 @@ visual_kanban/
 | Área | O que faz |
 |---|---|
 | **Kanban** | Colunas *A produzir → Em produção → Pronto → Entregue*, com filtros por confecção, prioridade, busca, “só atrasados” e ordenação. Drag & drop e botões. |
-| **Confecção** | Vê **somente a sua demanda**. Pode sinalizar *Em produção*, registrar **pronto parcial** (quantidade já pronta) e marcar *Pronto* (e voltar atrás). Não consegue marcar *Entregue* — isso é confirmação do analista. |
+| **Confecção** | Vê **somente a sua demanda**. Pode sinalizar *Em produção*, registrar **pronto parcial** (quantidade já pronta) e marcar *Pronto* (e voltar atrás). Não consegue marcar *Entregue* nem reabrir um pedido já entregue — isso é feito pelo analista. |
 | **Analista** | Vê todas as confecções, move qualquer pedido, confirma entrega, exporta CSV e administra usuários/confecções. |
 | **Alertas** | Derivados do quadro (sem tabela extra): atrasos, entregas em até 3 dias, prioridade alta parada e pedidos sem confecção. |
 | **Chat** | Conversa direta entre analista e confecção, com contador de não lidas e marcação automática de leitura. |

@@ -38,6 +38,8 @@
   function movimentos(p) {
     var alvos = (TRANSICOES[p.status] || []).slice();
     if (!VK.ehAnalista()) {
+      // Confecção não confirma entrega nem reabre pedido já entregue.
+      if (p.status === "Entregue") return [];
       alvos = alvos.filter(function (s) { return s !== "Entregue"; });
     }
     return alvos;

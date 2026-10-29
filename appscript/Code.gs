@@ -31,7 +31,7 @@
  * ============================================================================
  */
 
-var VERSAO = "1.1.0";
+var VERSAO = "1.1.1";
 
 var ABAS = {
   PEDIDOS: "Pedidos",
@@ -561,6 +561,10 @@ function _acaoAtualizarStatus(p) {
   }
 
   var atual = STATUS.indexOf(alvo.status) >= 0 ? alvo.status : "Pendente";
+  if (s.perfil !== "Analista" && atual === "Entregue") {
+    throw _erro("Pedido entregue só pode ser reaberto pelo analista.", "SEM_PERMISSAO");
+  }
+
   var permitidas = {
     "Pendente": ["Em andamento"],
     "Em andamento": ["Pendente", "Pronto"],

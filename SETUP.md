@@ -85,7 +85,7 @@ Há **duas** formas — use a que preferir (a do navegador tem prioridade):
 1. Abra o painel (**Streamlit Cloud:** `https://visualkanban.streamlit.app/`; localmente:
    `python -m streamlit run app.py`).
 2. Clique em **⚙ Configurar conexão**.
-3. Cole a URL `/exec` e clique em **Testar conexão** (deve aparecer “Conectado — versão 1.1.0”).
+3. Cole a URL `/exec` e clique em **Testar conexão** (deve aparecer “Conectado — versão 1.1.1”).
 4. **Salvar**. A URL fica no `localStorage` deste navegador.
 
 **B. Editando o arquivo (melhor para publicar para várias pessoas)**
@@ -98,7 +98,7 @@ window.VK_CONFIG = {
   pollMs: 20000,     // atualização do quadro (ms)
   chatPollMs: 8000,  // atualização do chat (ms)
   appNome: "Visual Kanban",
-  versao: "1.1.0",
+  versao: "1.1.1",
 };
 ```
 
@@ -192,7 +192,7 @@ Visualfil** (na raiz, ao lado do `app.py`). Ele já é chamado no fim de `pagina
    * **URL do AppScript:** a mesma URL `/exec`;
    * **Usuário analista:** `admin` (ou outro analista);
    * **Senha:** a senha desse usuário.
-5. Clique em **🔌 Testar conexão** → deve responder “Conectado — versão 1.1.0”.
+5. Clique em **🔌 Testar conexão** → deve responder “Conectado — versão 1.1.1”.
 6. Clique em **📤 Enviar Kanban**.
 
 O painel mostra:
@@ -250,6 +250,7 @@ saíram do quadro deixam de aparecer. O status de cada pedido, porém, é preser
 * **Pronto parcial:** informe o total de peças já prontas. O cartão mostra a barra de progresso e o
   restante continua em produção; ao atingir o saldo em aberto, o pedido vai automaticamente para **Pronto**.
 * Não consegue marcar **Entregue** — isso é feito pelo analista.
+* Também não consegue reabrir um pedido já **Entregue**; somente o analista pode devolvê-lo para **Pronto**.
 * Chat direto com o analista.
 
 **Atualizações automáticas:** o quadro busca novidades a cada 20 s e o chat a cada 8 s (ajustável em
