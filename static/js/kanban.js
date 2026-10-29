@@ -52,13 +52,17 @@
 
   function progressoHtml(p) {
     var saldo = Math.max(0, Number(p.saldo) || 0);
-    var pronta = Math.min(Math.max(0, Number(p.qtd_pronta) || 0), saldo);
-    if (!pronta || p.status === "Pronto" || p.status === "Entregue") return "";
-    var pct = saldo ? Math.round((pronta / saldo) * 100) : 0;
-    return '<div class="progresso-parcial" title="' +
-      VK.esc(VK.num(pronta) + " de " + VK.num(saldo) + " peças prontas") + '">' +
+    var quebra = Math.min(Math.max(0, Number(p.qtd_quebra) || 0), saldo);
+    var pronta = Math.min(Math.max(0, Number(p.qtd_pronta) || 0), Math.max(0, saldo - quebra));
+    if ((!pronta && !quebra) || p.status === "Pronto" || p.status === "Entregue") return "";
+    var contabilizada = Math.min(saldo, pronta + quebra);
+    var pct = saldo ? Math.round((contabilizada / saldo) * 100) : 0;
+    var titulo = VK.num(pronta) + " prontas" +
+      (quebra ? " + " + VK.num(quebra) + " quebra" : "") + " de " + VK.num(saldo);
+    return '<div class="progresso-parcial" title="' + VK.esc(titulo) + '">' +
       '<div class="barra"><span style="width:' + pct + '%"></span></div>' +
-      '<small>◐ ' + VK.num(pronta) + " de " + VK.num(saldo) + " prontas</small></div>";
+      '<small>◐ ' + VK.num(pronta) + " de " + VK.num(saldo) + " prontas" +
+      (quebra ? " · " + VK.num(quebra) + " quebra" : "") + "</small></div>";
   }
 
   /* ---------------- Carregamento ---------------- */
@@ -192,6 +196,9 @@
     var pecasProntas = andamento.reduce(function (s, p) {
       return s + (Number(p.qtd_pronta) || 0);
     }, 0);
+    var pecasQuebra = andamento.reduce(function (s, p) {
+      return s + (Number(p.qtd_quebra) || 0);
+    }, 0);
 
     var html =
       kpi("Pedidos", VK.num(lista.length), VK.ehAnalista()
@@ -202,7 +209,8 @@
         atrasados.length ? "exigem atenção" : "nenhum atraso", "#ef4444") +
       kpi("Em produção", VK.num(andamento.length),
         VK.num(andamento.reduce(function (s, p) { return s + (Number(p.saldo) || 0); }, 0)) + " un" +
-        (pecasProntas ? " · " + VK.num(pecasProntas) + " prontas" : ""),
+        (pecasProntas ? " · " + VK.num(pecasProntas) + " prontas" : "") +
+        (pecasQuebra ? " · " + VK.num(pecasQuebra) + " quebra" : ""),
         "#f59e0b") +
       kpi("Progresso", pct + "%", prontos.length + " de " + lista.length + " concluídos", "#10b981");
 
@@ -211,10 +219,13 @@
 
   function cardHtml(p) {
     var alvos = movimentos(p);
+    var saldo = Math.max(0, Number(p.saldo) || 0);
+    var quebra = Math.min(Math.max(0, Number(p.qtd_quebra) || 0), saldo);
     var botoes = "";
     if (podeParcial(p)) {
       botoes += '<button type="button" data-parcial="1" class="parcial" ' +
-        'title="Registrar pronto parcial" aria-label="Registrar pronto parcial">◐</button>';
+        'title="Registrar produção / quebra de tecido" ' +
+        'aria-label="Registrar produção / quebra de tecido">◐</button>';
     }
     botoes += alvos.map(function (alvo) {
       var seta = alvo === "Pendente" ? "←" : alvo === "Pronto" ? "✓" : alvo === "Entregue" ? "📦" : "→";
@@ -234,6 +245,8 @@
       '<div class="meta">' +
       '<span class="chip">Cód ' + VK.esc(p.cod_confec || "—") + "</span>" +
       '<span class="chip qtd">' + VK.num(p.saldo) + " un</span>" +
+      (quebra ? '<span class="chip quebra" title="Peças que não virão por falta de tecido">✂ ' +
+        VK.num(quebra) + " quebra</span>" : "") +
       (p.qe ? '<span class="chip qe">Q.E ' + VK.num(p.qe) + "</span>" : "") +
       (p.marca ? '<span class="chip">' + VK.esc(p.marca) + "</span>" : "") +
       "</div>" +
@@ -310,13 +323,16 @@
 
     var antes = Object.assign({}, pedido);
     var sessao = VK.session() || {};
+    var saldo = Math.max(0, Number(pedido.saldo) || 0);
+    var quebra = Math.min(Math.max(0, Number(pedido.qtd_quebra) || 0), saldo);
 
     pedido.status = novo;
     pedido.status_por = sessao.user || "";
     pedido.status_em = new Date().toISOString();
     pedido.qtd_pronta = (novo === "Pronto" || novo === "Entregue")
-      ? (Number(pedido.saldo) || 0)
+      ? Math.max(0, saldo - quebra)
       : 0;
+    if (novo === "Pendente") pedido.qtd_quebra = 0;
     pedido.pronto_parcial_em = "";
     pedido.pronto_parcial_por = "";
     render();
@@ -362,10 +378,15 @@
     }).join("");
 
     var saldo = Math.max(0, Number(p.saldo) || 0);
-    var pronta = Math.min(Math.max(0, Number(p.qtd_pronta) || 0), saldo);
-    var parcialLinha = pronta > 0
+    var quebra = Math.min(Math.max(0, Number(p.qtd_quebra) || 0), saldo);
+    var pronta = Math.min(Math.max(0, Number(p.qtd_pronta) || 0), Math.max(0, saldo - quebra));
+    var parcialLinha = (pronta > 0 || quebra > 0)
       ? '<div class="item"><span>Prontas</span><strong>' +
-        VK.num(pronta) + " / " + VK.num(saldo) + " un</strong></div>"
+        VK.num(pronta) + " / " + VK.num(saldo) + " un</strong></div>" +
+        (quebra > 0
+          ? '<div class="item"><span>Quebra de tecido</span><strong>' +
+            VK.num(quebra) + " un</strong></div>"
+          : "")
       : "";
 
     var etapas = ["Pendente", "Em andamento", "Pronto", "Entregue"];
@@ -403,7 +424,7 @@
 
     var acoes = "";
     if (podeParcial(p)) {
-      acoes += '<button class="btn primary" type="button" data-parcial="1">◐ Pronto parcial</button>';
+      acoes += '<button class="btn primary" type="button" data-parcial="1">◐ Produção / quebra</button>';
     }
     acoes += movimentos(p).map(function (alvo) {
       var classe = (alvo === "Pronto" && !podeParcial(p)) ? "btn primary" : "btn";
@@ -442,7 +463,7 @@
     VK.abrirDialogo("dlg-pedido");
   }
 
-  /* ---------------- Pronto parcial ---------------- */
+  /* ---------------- Produção / pronto parcial ---------------- */
 
   function abrirParcial(chave) {
     var p = null;
@@ -455,23 +476,30 @@
 
     parcialChave = chave;
     var saldo = Math.max(0, Number(p.saldo) || 0);
-    var pronta = Math.min(Math.max(0, Number(p.qtd_pronta) || 0), saldo);
-    var pct = saldo ? Math.round((pronta / saldo) * 100) : 0;
+    var quebra = Math.min(Math.max(0, Number(p.qtd_quebra) || 0), saldo);
+    var pronta = Math.min(Math.max(0, Number(p.qtd_pronta) || 0), Math.max(0, saldo - quebra));
+    var contabilizada = Math.min(saldo, pronta + quebra);
+    var pct = saldo ? Math.round((contabilizada / saldo) * 100) : 0;
 
-    VK.$("#parcial-titulo").textContent = "Pronto parcial · Pedido #" + (p.pedido || "—");
+    VK.$("#parcial-titulo").textContent = "Produção · Pedido #" + (p.pedido || "—");
     VK.$("#parcial-resumo").innerHTML =
       "<span>Saldo em aberto: <strong>" + VK.num(saldo) + " un</strong></span>" +
-      "<span>Já prontas: <strong>" + VK.num(pronta) + " un</strong> (" + pct + "%)</span>" +
+      "<span>Já prontas: <strong>" + VK.num(pronta) + " un</strong></span>" +
+      "<span>Quebra: <strong>" + VK.num(quebra) + " un</strong></span>" +
+      "<span>Contabilizado: <strong>" + VK.num(contabilizada) + " un (" + pct + "%)</strong></span>" +
       (p.status === "Pendente"
         ? "<span>Ao salvar, o pedido entra em produção.</span>"
         : "");
 
     var input = VK.$("#parcial-qtd");
+    var inputQuebra = VK.$("#parcial-quebra");
     input.max = String(saldo);
     input.value = String(pronta);
+    inputQuebra.max = String(saldo);
+    inputQuebra.value = String(quebra);
     VK.$("#parcial-msg").textContent = "";
     VK.$("#parcial-hint").textContent =
-      "Informe o total já pronto. O restante continua em produção.";
+      "Informe os totais acumulados. Peças prontas + quebra não podem passar do saldo.";
 
     VK.fecharDialogo("dlg-pedido");
     VK.abrirDialogo("dlg-parcial");
@@ -493,6 +521,7 @@
       { titulo: "Qtd", valor: "qtd" },
       { titulo: "Saldo", valor: "saldo" },
       { titulo: "Prontas", valor: "qtd_pronta" },
+      { titulo: "Quebra", valor: "qtd_quebra" },
       { titulo: "Dt Entrega", valor: function (p) { return VK.dataBR(p.dt_entrega); } },
       { titulo: "Prioridade", valor: "prioridade" },
       { titulo: "Q.E", valor: "qe" },
@@ -639,13 +668,17 @@
 
   VK.$("#btn-exportar").addEventListener("click", exportar);
 
-  // Pronto parcial
+  // Produção / pronto parcial
   VK.$("#parcial-tudo").addEventListener("click", function () {
     var p = null;
     VK.state.pedidos.forEach(function (x) { if (x.chave === parcialChave) p = x; });
     if (!p) return;
+    var saldo = Math.max(0, Number(p.saldo) || 0);
+    var inputQuebra = VK.$("#parcial-quebra");
+    var brutoQuebra = String(inputQuebra.value || "").trim();
+    var quebra = /^\d+$/.test(brutoQuebra) ? parseInt(brutoQuebra, 10) : 0;
     var input = VK.$("#parcial-qtd");
-    input.value = String(Math.max(0, Number(p.saldo) || 0));
+    input.value = String(Math.max(0, saldo - Math.min(quebra, saldo)));
     input.focus();
   });
 
@@ -658,17 +691,26 @@
 
     var saldo = Math.max(0, Number(p.saldo) || 0);
     var input = VK.$("#parcial-qtd");
+    var inputQuebra = VK.$("#parcial-quebra");
     var msg = VK.$("#parcial-msg");
     var bruto = String(input.value || "").trim();
+    var brutoQuebra = String(inputQuebra.value || "").trim();
 
     if (!/^\d+$/.test(bruto)) {
-      msg.textContent = "Informe uma quantidade inteira de peças.";
+      msg.textContent = "Informe uma quantidade inteira de peças prontas.";
       input.focus();
       return;
     }
+    if (!/^\d+$/.test(brutoQuebra)) {
+      msg.textContent = "Informe uma quantidade inteira de peças com quebra.";
+      inputQuebra.focus();
+      return;
+    }
     var total = parseInt(bruto, 10);
-    if (total > saldo) {
-      msg.textContent = "O máximo é o saldo em aberto (" + VK.num(saldo) + " un).";
+    var quebra = parseInt(brutoQuebra, 10);
+    if (total + quebra > saldo) {
+      msg.textContent = "Peças prontas + quebra não podem passar do saldo em aberto (" +
+        VK.num(saldo) + " un).";
       input.focus();
       return;
     }
@@ -678,15 +720,22 @@
     btn.disabled = true;
     btn.textContent = "Salvando…";
 
-    VK.call("registrarprontoparcial", { chave: parcialChave, qtd_pronta: total })
+    VK.call("registrarprontoparcial", {
+      chave: parcialChave,
+      qtd_pronta: total,
+      qtd_quebra: quebra
+    })
       .then(function (r) {
         VK.fecharDialogo("dlg-parcial");
+        var detalhe = VK.num(total) + " prontas" +
+          (quebra ? " + " + VK.num(quebra) + " quebra" : "");
         if (r && r.completo) {
-          VK.toast("Pedido #" + (p.pedido || "") + " marcado como pronto (" +
-            VK.num(saldo) + " un).", "ok");
+          VK.toast("Pedido #" + (p.pedido || "") + " pronto: " + detalhe + ".", "ok");
         } else {
-          VK.toast("Pronto parcial: " + VK.num(total) + " de " +
-            VK.num(saldo) + " un.", "ok");
+          VK.toast("Produção: " + detalhe + " de " + VK.num(saldo) + " un.", "ok");
+        }
+        if (quebra > 0 && r && typeof r.qtd_quebra === "undefined") {
+          VK.toast("A quebra não foi gravada: publique a versão 1.2.0 do Apps Script.", "warn", 8000);
         }
         VK.atualizarBadges();
         return carregar(false, true);
@@ -696,7 +745,7 @@
       })
       .then(function () {
         btn.disabled = false;
-        btn.textContent = "Salvar pronto parcial";
+        btn.textContent = "Salvar produção";
       });
   });
 

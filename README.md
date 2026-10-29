@@ -57,7 +57,7 @@ visual_kanban/
 | Área | O que faz |
 |---|---|
 | **Kanban** | Colunas *A produzir → Em produção → Pronto → Entregue*, com filtros por confecção, prioridade, busca, “só atrasados” e ordenação. Drag & drop e botões. |
-| **Confecção** | Vê **somente a sua demanda**. Pode sinalizar *Em produção*, registrar **pronto parcial** (quantidade já pronta) e marcar *Pronto* (e voltar atrás). Não consegue marcar *Entregue* nem reabrir um pedido já entregue — isso é feito pelo analista. |
+| **Confecção** | Vê **somente a sua demanda**. Pode sinalizar *Em produção*, registrar **pronto parcial** e **quebra de tecido** (peças que não virão) e marcar *Pronto* (e voltar atrás). O pedido fecha quando **prontas + quebra** alcançam o saldo. Não consegue marcar *Entregue* nem reabrir um pedido já entregue — isso é feito pelo analista. |
 | **Analista** | Vê todas as confecções, move qualquer pedido, confirma entrega, exporta CSV e administra usuários/confecções. |
 | **Alertas** | Derivados do quadro (sem tabela extra): atrasos, entregas em até 3 dias, prioridade alta parada e pedidos sem confecção. |
 | **Chat** | Conversa direta entre analista e confecção, com contador de não lidas e marcação automática de leitura. |
@@ -92,7 +92,7 @@ Criadas automaticamente por `setup()`:
 
 | Aba | Conteúdo |
 |---|---|
-| `Pedidos` | um registro por pedido enviado (chave estável, status, quem moveu e quando, quantidade pronta parcial) |
+| `Pedidos` | um registro por pedido enviado (chave estável, status, quem moveu e quando, quantidade pronta parcial e quebra de tecido) |
 | `Usuarios` | login, nome, perfil, código da confecção, hash da senha, salt, ativo |
 | `Sessoes` | token, usuário, criação, expiração |
 | `Confeccoes` | código, nome, aliases, ativo |
@@ -114,6 +114,9 @@ Ações: `ping`, `login`, `logout`, `sessao`, `trocarsenha`, `listarpedidos`, `a
 
 `enviarkanban` aceita `token` **ou** `user` + `senha` (é o que o Streamlit usa) e exige perfil
 `Analista`.
+
+`registrarprontoparcial` recebe `chave`, `qtd_pronta` e `qtd_quebra` (totais acumulados). O pedido
+vai para **Pronto** quando `qtd_pronta + qtd_quebra` alcança o `saldo`.
 
 ---
 

@@ -6,7 +6,7 @@
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#0a1020">
   <title>Visual Kanban · Painel</title>
-  <link rel="stylesheet" href="css/style.css?v=1.1.1">
+  <link rel="stylesheet" href="css/style.css?v=1.2.0">
 </head>
 <body class="app-body">
 
@@ -234,27 +234,35 @@
   <dialog id="dlg-parcial">
     <form id="form-parcial">
       <header class="dlg-head">
-        <h3 id="parcial-titulo">Pronto parcial</h3>
+        <h3 id="parcial-titulo">Produção / quebra</h3>
         <button class="fechar" type="button" onclick="VK.fecharDialogo('dlg-parcial')">×</button>
       </header>
       <div class="dlg-body">
         <div class="parcial-resumo" id="parcial-resumo"></div>
         <div class="field">
-          <label for="parcial-qtd">Quantidade pronta (total)</label>
+          <label for="parcial-qtd">Peças prontas (total)</label>
           <div class="campo-qtd">
             <input class="input" id="parcial-qtd" type="number" min="0" step="1"
                    inputmode="numeric" required>
-            <button class="btn ghost sm" type="button" id="parcial-tudo">Tudo</button>
+            <button class="btn ghost sm" type="button" id="parcial-tudo">Restante</button>
           </div>
           <span class="hint" id="parcial-hint">
             Informe o total já pronto. O restante continua em produção.
+          </span>
+        </div>
+        <div class="field">
+          <label for="parcial-quebra">Quebra de tecido (total)</label>
+          <input class="input" id="parcial-quebra" type="number" min="0" step="1"
+                 inputmode="numeric" value="0" required>
+          <span class="hint">
+            Peças que não virão por falta de tecido. Elas entram no total para concluir o pedido.
           </span>
         </div>
         <div class="erro" id="parcial-msg"></div>
       </div>
       <footer class="dlg-foot">
         <button class="btn ghost" type="button" onclick="VK.fecharDialogo('dlg-parcial')">Cancelar</button>
-        <button class="btn primary" type="submit">Salvar pronto parcial</button>
+        <button class="btn primary" type="submit">Salvar produção</button>
       </footer>
     </form>
   </dialog>
@@ -343,11 +351,11 @@
 
   <div class="toasts" id="toasts"></div>
 
-  <script src="js/config.js?v=1.1.1"></script>
-  <script src="js/core.js?v=1.1.1"></script>
-  <script src="js/app.js?v=1.1.1"></script>
-  <script src="js/kanban.js?v=1.1.1"></script>
-  <script src="js/chat.js?v=1.1.1"></script>
-  <script src="js/admin.js?v=1.1.1"></script>
+  <script src="js/config.js?v=1.2.0"></script>
+  <script src="js/core.js?v=1.2.0"></script>
+  <script src="js/app.js?v=1.2.0"></script>
+  <script src="js/kanban.js?v=1.2.0"></script>
+  <script src="js/chat.js?v=1.2.0"></script>
+  <script src="js/admin.js?v=1.2.0"></script>
 </body>
 </html>
