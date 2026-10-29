@@ -8,9 +8,21 @@
   var CFG = window.VK_CONFIG || {};
   var LS_URL = "vk_api_url";
   var LS_SESSAO = "vk_sessao";
+  var URL_ANTIGA_ID = "AKfycbwxWwF5JHfKcom83hPgIVd9fiOE4gdOvEUN57PA6m0ZbJpNzbZdYf7gCIcZdf5cHBIp";
+
+  function urlApiInicial() {
+    var salva = String(localStorage.getItem(LS_URL) || "").trim();
+    // Migra automaticamente a implantação antiga (1.1.0), que não envia qtd_quebra.
+    if (salva && salva.indexOf(URL_ANTIGA_ID) >= 0) {
+      localStorage.removeItem(LS_URL);
+      salva = "";
+    }
+    return (salva || CFG.apiUrl || "").trim();
+  }
 
   VK.config = {
-    apiUrl: (localStorage.getItem(LS_URL) || CFG.apiUrl || "").trim(),
+    apiUrl: urlApiInicial(),
+    apiUrlPadrao: String(CFG.apiUrl || "").trim(),
     pollMs: Number(CFG.pollMs) || 20000,
     chatPollMs: Number(CFG.chatPollMs) || 8000,
     appNome: CFG.appNome || "Visual Kanban",

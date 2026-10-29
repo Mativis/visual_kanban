@@ -98,11 +98,16 @@ window.VK_CONFIG = {
   pollMs: 20000,     // atualização do quadro (ms)
   chatPollMs: 8000,  // atualização do chat (ms)
   appNome: "Visual Kanban",
-  versao: "1.2.1",
+  versao: "1.2.2",
 };
 ```
 
 Pronto: ao abrir o painel, o campo já vem preenchido para todos.
+
+> Se uma URL antiga (versão 1.1.0) estiver salva no navegador, o painel **1.2.2**
+> remove automaticamente essa URL e passa a usar a URL do `config.js`. Quando o
+> servidor conectado for anterior à **1.2.0**, aparece um aviso no topo do painel
+> com o botão **Atualizar painel**. Em caso de dúvida, use **Ctrl+F5**.
 
 ### Publicar no Streamlit Cloud (esta implantação)
 

@@ -48,6 +48,47 @@
     el.title = VK.state.ultimoEnvio || "Nenhum Kanban enviado ainda";
   }
 
+  function versaoAntiga(versao) {
+    var nums = String(versao || "").match(/\d+/g) || [];
+    var min = [1, 2, 0];
+    for (var i = 0; i < min.length; i++) {
+      var n = Number(nums[i] || 0);
+      if (n < min[i]) return true;
+      if (n > min[i]) return false;
+    }
+    return false;
+  }
+
+  function verificarServidor() {
+    var box = VK.$("#aviso-conexao");
+    if (!box) return;
+
+    VK.call("ping", {}, { timeout: 15000 })
+      .then(function (r) {
+        var versaoEl = VK.$("#dd-versao");
+        if (versaoEl) versaoEl.textContent = r && r.versao ? "Servidor " + r.versao : "";
+        if (!r || !versaoAntiga(r.versao)) {
+          box.classList.add("hide");
+          return;
+        }
+        box.innerHTML = "<span><strong>Servidor antigo conectado" +
+          (r.versao ? " (versão " + VK.esc(r.versao) + ")" : "") +
+          ".</strong> A quebra de tecido só aparece com a versão 1.2.0 do Apps Script. " +
+          "Atualize a conexão e recarregue o painel.</span>" +
+          '<button type="button" class="btn ghost sm" id="btn-conexao-atualizar">Atualizar painel</button>';
+        box.classList.remove("hide");
+
+        var btn = VK.$("#btn-conexao-atualizar");
+        if (btn) btn.addEventListener("click", function () {
+          if (VK.config.apiUrlPadrao) VK.setApiUrl(VK.config.apiUrlPadrao);
+          location.href = location.pathname + "?v=" + Date.now() + (location.hash || "");
+        });
+      })
+      .catch(function () { /* não bloqueia o painel se o ping falhar */ });
+  }
+
+  VK.verificarServidor = verificarServidor;
+
   VK.atualizarSessao = function () {
     return VK.call("sessao")
       .then(function (r) {
@@ -259,6 +300,7 @@
     VK.nav(inicial);
     VK.atualizarSessao();
     VK.atualizarBadges();
+    verificarServidor();
 
     setInterval(function () {
       if (document.visibilityState !== "visible") return;

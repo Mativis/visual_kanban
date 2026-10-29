@@ -259,6 +259,7 @@ a { color: var(--info); text-decoration: none; }
 .dd-head { padding: 10px 10px 12px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
 .dd-head strong { display: block; font-size: 13.5px; }
 .dd-head small { color: var(--muted); font-size: 11.5px; }
+.dd-head .dd-versao { display: block; margin-top: 3px; color: #7dd3fc; }
 .dropdown button {
   display: block; width: 100%; text-align: left;
   padding: 9px 10px; border: none; background: none; border-radius: 8px;
@@ -272,6 +273,18 @@ a { color: var(--info); text-decoration: none; }
 .app-main {
   padding: 18px max(20px, var(--safe-right)) calc(40px + var(--safe-bottom)) max(20px, var(--safe-left));
   max-width: 1900px; width: 100%; margin: 0 auto;
+}
+.aviso-conexao {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-bottom: 14px; padding: 11px 14px; border-radius: 12px;
+  background: rgba(245, 158, 11, .12);
+  border: 1px solid rgba(245, 158, 11, .36);
+  color: #fcd34d; font-size: 12.8px; line-height: 1.4;
+}
+.aviso-conexao strong { color: #fde68a; }
+.aviso-conexao .btn { flex: none; }
+@media (max-width: 640px) {
+  .aviso-conexao { flex-direction: column; align-items: flex-start; }
 }
 .view { animation: entrar .18s ease-out; }
 @keyframes entrar { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }

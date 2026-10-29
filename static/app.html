@@ -5,8 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#0a1020">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Visual Kanban · Painel</title>
-  <link rel="stylesheet" href="css/style.css?v=1.2.1">
+  <link rel="stylesheet" href="css/style.css?v=1.2.2">
 </head>
 <body class="app-body">
 
@@ -38,6 +41,7 @@
           <div class="dd-head">
             <strong id="dd-nome">…</strong>
             <small id="dd-conf"></small>
+            <small id="dd-versao" class="dd-versao"></small>
           </div>
           <button type="button" data-act="senha">Trocar senha</button>
           <button type="button" data-act="conexao">Configurar conexão</button>
@@ -48,6 +52,8 @@
   </header>
 
   <main class="app-main">
+
+    <div class="aviso-conexao hide" id="aviso-conexao"></div>
 
     <!-- ============================ KANBAN ============================ -->
     <section id="view-kanban" class="view">
@@ -351,11 +357,11 @@
 
   <div class="toasts" id="toasts"></div>
 
-  <script src="js/config.js?v=1.2.1"></script>
-  <script src="js/core.js?v=1.2.1"></script>
-  <script src="js/app.js?v=1.2.1"></script>
-  <script src="js/kanban.js?v=1.2.1"></script>
-  <script src="js/chat.js?v=1.2.1"></script>
-  <script src="js/admin.js?v=1.2.1"></script>
+  <script src="js/config.js?v=1.2.2"></script>
+  <script src="js/core.js?v=1.2.2"></script>
+  <script src="js/app.js?v=1.2.2"></script>
+  <script src="js/kanban.js?v=1.2.2"></script>
+  <script src="js/chat.js?v=1.2.2"></script>
+  <script src="js/admin.js?v=1.2.2"></script>
 </body>
 </html>
