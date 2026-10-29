@@ -71,6 +71,9 @@ Como executar:
 > ⚠️ Use sempre a URL `/exec`. A URL `/dev` só funciona para você, logado, e não serve para o
 > painel nem para o Streamlit.
 
+> Esta versão do `Code.gs` responde **1.2.3**. O envio filtrado do Visualfil exige essa versão
+> (ou superior); em um backend antigo o painel bloqueia o envio parcial por segurança.
+
 Sempre que alterar o `Code.gs`, publique de novo:
 **Implantar → Gerenciar implantações → ✏️ → Versão: Nova versão → Implantar.** A URL continua a mesma.
 
@@ -85,7 +88,7 @@ Há **duas** formas — use a que preferir (a do navegador tem prioridade):
 1. Abra o painel (**Streamlit Cloud:** `https://visualkanban.streamlit.app/`; localmente:
    `python -m streamlit run app.py`).
 2. Clique em **⚙ Configurar conexão**.
-3. Cole a URL `/exec` e clique em **Testar conexão** (deve aparecer “Conectado — versão 1.2.0”).
+3. Cole a URL `/exec` e clique em **Testar conexão** (deve aparecer “Conectado — versão 1.2.3”).
 4. **Salvar**. A URL fica no `localStorage` deste navegador.
 
 **B. Editando o arquivo (melhor para publicar para várias pessoas)**
@@ -98,13 +101,13 @@ window.VK_CONFIG = {
   pollMs: 20000,     // atualização do quadro (ms)
   chatPollMs: 8000,  // atualização do chat (ms)
   appNome: "Visual Kanban",
-  versao: "1.2.2",
+  versao: "1.2.3",
 };
 ```
 
 Pronto: ao abrir o painel, o campo já vem preenchido para todos.
 
-> Se uma URL antiga (versão 1.1.0) estiver salva no navegador, o painel **1.2.2**
+> Se uma URL antiga (versão 1.1.0) estiver salva no navegador, o painel **1.2.3**
 > remove automaticamente essa URL e passa a usar a URL do `config.js`. Quando o
 > servidor conectado for anterior à **1.2.0**, aparece um aviso no topo do painel
 > com o botão **Atualizar painel**. Em caso de dúvida, use **Ctrl+F5**.
@@ -197,7 +200,7 @@ Visualfil** (na raiz, ao lado do `app.py`). Ele já é chamado no fim de `pagina
    * **URL do AppScript:** a mesma URL `/exec`;
    * **Usuário analista:** `admin` (ou outro analista);
    * **Senha:** a senha desse usuário.
-5. Clique em **🔌 Testar conexão** → deve responder “Conectado — versão 1.2.0”.
+5. Clique em **🔌 Testar conexão** → deve responder “Conectado — versão 1.2.3”.
 6. Clique em **📤 Enviar Kanban**.
 
 O painel mostra:
@@ -231,11 +234,15 @@ O painel também guarda o que foi digitado em `st.session_state` durante a sess�
 
 | Opção | Quando usar |
 |---|---|
-| **Reiniciar status dos pedidos** | quando quiser que todo o quadro volte para *A produzir*, apagando as marcações das confecções. |
+| **Somente os pedidos filtrados** | envia apenas o que está na tela (confecção, prioridade, busca e filtro de Saldo ≤ 4%) e **preserva** os demais pedidos no Visual Kanban. Pedidos removidos da origem só saem no envio completo. |
+| **Todo o quadro** | publica todos os pedidos do Kanban e substitui a versão anterior na planilha: pedidos que saíram do quadro deixam de aparecer. |
+| **Reiniciar status dos pedidos** | no envio filtrado, reinicia só os pedidos enviados; no envio completo, todo o quadro. |
 
-O envio publica **todos** os pedidos do Kanban e substitui a versão anterior na planilha: pedidos que
-saíram do quadro deixam de aparecer. O status de cada pedido, porém, é preservado — inclusive se a
-**data de entrega** mudar na origem (a chave do pedido é `Compra + Cód Confec + confecção`).
+O status de cada pedido, porém, é preservado — inclusive se a **data de entrega** mudar na origem
+(a chave do pedido é `Compra + Cód Confec + confecção`).
+
+> O envio filtrado exige o Apps Script **1.2.3** ou superior. Se o painel detectar um servidor antigo,
+> ele bloqueia o envio parcial para não substituir o quadro inteiro por engano.
 
 ---
 
@@ -273,7 +280,7 @@ saíram do quadro deixam de aparecer. O status de cada pedido, porém, é preser
 | Nome da confecção mudou na origem | **Administração → Confecções → Editar** e coloque o nome antigo em **Aliases**, separado por `|`. O código e o histórico continuam. |
 | Confecção trocou de responsável | crie um usuário novo (ou redefina a senha em **Editar**). A senha antiga deixa de funcionar na hora. |
 | Esqueci a senha do admin | Abra a aba `Usuarios`, apague a linha do `admin` e rode `setup()` de novo (volta `admin`/`admin123`). |
-| Quero limpar o quadro | envie novamente com **Reiniciar status** marcado. |
+| Quero limpar o quadro | envie **Todo o quadro** com **Reiniciar status** marcado. |
 | Preciso ver o que foi feito | aba `Log` (logins, envios, mudanças de status, administração). |
 | Atualizei o `Code.gs` | publique uma **nova versão** da implantação. |
 
@@ -290,6 +297,7 @@ saíram do quadro deixam de aparecer. O status de cada pedido, porém, é preser
 | Confecção não vê pedidos | usuário sem `codigo_confeccao` ou código diferente | **Administração → Usuários → Editar** e selecione a confecção |
 | Envio diz “Apenas analistas…” | usuário do Streamlit não é Analista | use um usuário com perfil Analista |
 | Status “some” após novo envio | opção **Reiniciar status** marcada ou `Cód Confec`/`Compra` alterados na origem | desmarque a opção; o vínculo do status usa `Compra + Cód Confec + confecção` |
+| “O envio filtrado precisa do Apps Script 1.2.3…” | backend antigo | publique o `Code.gs` 1.2.3 ou escolha **Todo o quadro** |
 | Erro de CORS no console | POST bloqueado pela rede | o painel já tenta GET como fallback; verifique se a implantação é pública |
 | Planilha com dados estranhos | abas editadas à mão | não renomeie/ordene colunas; o cabeçalho é gerado pelo `setup()` |
 

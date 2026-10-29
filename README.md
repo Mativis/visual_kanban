@@ -11,6 +11,10 @@ O painel é **100% estático** (HTML/CSS/JS). Nesta implantação ele é servido
 apenas como hospedagem (`app.py` + `static/`), mas continua podendo ser publicado em qualquer
 servidor estático (GitHub Pages, Netlify, servidor interno…).
 
+No painel **Enviar Kanban** há dois escopos: **Somente os pedidos filtrados** (atualiza o recorte
+da tela e preserva os demais pedidos já publicados) e **Todo o quadro** (substitui a versão anterior
+e remove pedidos que saíram da origem). O envio filtrado exige o Apps Script **1.2.3** ou superior.
+
 ```
 Visualfil (Streamlit)  ──"Enviar Kanban"──▶  Google Sheets  ◀──API JSON──▶  Visual Kanban (este repo)
         pedidos                              (banco de dados)                HTML/CSS/JS estático
@@ -113,7 +117,8 @@ Ações: `ping`, `login`, `logout`, `sessao`, `trocarsenha`, `listarpedidos`, `a
 `atualizarconfeccao`, `enviarkanban`.
 
 `enviarkanban` aceita `token` **ou** `user` + `senha` (é o que o Streamlit usa) e exige perfil
-`Analista`.
+`Analista`. O parâmetro opcional `modo` (`"parcial"` na versão 1.2.3+) atualiza apenas os pedidos
+enviados e preserva os demais; sem ele (ou com `"completo"`) o quadro inteiro é substituído.
 
 `registrarprontoparcial` recebe `chave`, `qtd_pronta` e `qtd_quebra` (totais acumulados). O pedido
 vai para **Pronto** quando `qtd_pronta + qtd_quebra` alcança o `saldo`.

@@ -31,7 +31,7 @@
  * ============================================================================
  */
 
-var VERSAO = "1.2.0";
+var VERSAO = "1.2.3";
 
 var ABAS = {
   PEDIDOS: "Pedidos",
@@ -343,6 +343,8 @@ function _acaoEnviarKanban(p) {
   if (!dados || !dados.length) throw _erro("Nenhum pedido para enviar.", "VALIDACAO");
 
   var resetar = _bool(p.resetar_status);
+  var modo = _texto(p.modo || p.modo_envio).toLowerCase();
+  var parcial = modo === "parcial" || _bool(p.preservar);
   var agora = new Date();
   var existentes = {};
   _lerObjetos(ABAS.PEDIDOS).forEach(function (r) { existentes[r.chave] = r; });
@@ -473,13 +475,31 @@ function _acaoEnviarKanban(p) {
     });
   });
 
+  // No modo parcial, atualiza apenas os pedidos enviados e mantém intactos
+  // os demais pedidos já existentes no Visual Kanban. O modo completo continua
+  // substituindo o quadro inteiro (e removendo pedidos que saíram da origem).
+  var enviados = linhas.length;
+  var mantidos = 0;
+  if (parcial) {
+    Object.keys(existentes).forEach(function (chaveExistente) {
+      if (vistos[chaveExistente]) return;
+      var antigo = existentes[chaveExistente];
+      if (!antigo || !antigo.chave) return;
+      if (antigo.status && antigo.status !== "Pendente") preservados++;
+      linhas.push(antigo);
+      mantidos++;
+    });
+  }
+
   _substituirLinhas(ABAS.PEDIDOS, linhas);
   _setConfig("ultimo_envio", agora.toISOString());
   _setConfig("ultimo_envio_por", s.user);
   _setConfig("ultimo_envio_total", linhas.length);
 
   _log(s.user, s.perfil, "enviar_kanban", linhas.length + " pedidos · " +
-    Object.keys(confsUsadas).length + " confecções" + (resetar ? " · status reiniciados" : ""));
+    Object.keys(confsUsadas).length + " confecções" +
+    (parcial ? " · " + enviados + " enviados, " + mantidos + " preservados" : "") +
+    (resetar ? " · status reiniciados" : ""));
 
   var porConf = {};
   linhas.forEach(function (l) {
@@ -492,6 +512,10 @@ function _acaoEnviarKanban(p) {
   return {
     ok: true,
     total: linhas.length,
+    total_quadro: linhas.length,
+    enviados: enviados,
+    preservados_fora: mantidos,
+    modo: parcial ? "parcial" : "completo",
     invalidos: invalidos,
     status_preservados: preservados,
     resetado: resetar,

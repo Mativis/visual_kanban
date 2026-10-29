@@ -18,7 +18,7 @@ st.set_page_config(
 )
 
 st.markdown(
-    '<meta http-equiv="refresh" content="0; url=app/static/index.html?v=1.2.2">',
+    '<meta http-equiv="refresh" content="0; url=app/static/index.html?v=1.2.3">',
     unsafe_allow_html=True,
 )
 
@@ -27,7 +27,7 @@ st.markdown(
     <div style="text-align:center; padding:48px 16px;">
       <h1 style="margin:0 0 8px;">Visual Kanban</h1>
       <p style="margin:0 0 20px; color:#93a3bd;">Abrindo o painel…</p>
-      <p><a href="app/static/index.html?v=1.2.2" target="_self">Abrir o Visual Kanban</a></p>
+      <p><a href="app/static/index.html?v=1.2.3" target="_self">Abrir o Visual Kanban</a></p>
     </div>
     """,
     unsafe_allow_html=True,

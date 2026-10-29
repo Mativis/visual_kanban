@@ -15,5 +15,5 @@ window.VK_CONFIG = {
 
   // Nome exibido
   appNome: "Visual Kanban",
-  versao: "1.2.2",
+  versao: "1.2.3",
 };
