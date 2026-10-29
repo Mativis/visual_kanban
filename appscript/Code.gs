@@ -31,7 +31,7 @@
  * ============================================================================
  */
 
-var VERSAO = "1.0.0";
+var VERSAO = "1.1.0";
 
 var ABAS = {
   PEDIDOS: "Pedidos",
@@ -47,7 +47,8 @@ var ESQUEMA = {
   Pedidos: [
     "chave", "pedido", "cod_confec", "produto", "qtd", "saldo", "dt_entrega",
     "confeccao", "codigo_confeccao", "marca", "prioridade", "qe",
-    "status", "status_em", "status_por", "enviado_em", "dados_json"
+    "status", "status_em", "status_por", "enviado_em", "dados_json",
+    "qtd_pronta", "pronto_parcial_em", "pronto_parcial_por"
   ],
   Usuarios: [
     "user", "nome", "senha_hash", "salt", "perfil", "codigo_confeccao",
@@ -113,8 +114,9 @@ function setup() {
 }
 
 function _garantirCabecalho(sh, cabecalho) {
+  if (!cabecalho || !cabecalho.length) return;
   var atual = sh.getLastColumn() ? sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0] : [];
-  var igual = atual.length === cabecalho.length &&
+  var igual = atual.length >= cabecalho.length &&
     cabecalho.every(function (h, i) { return String(atual[i]) === h; });
   if (!igual) {
     sh.getRange(1, 1, 1, cabecalho.length).setValues([cabecalho]);
@@ -179,6 +181,9 @@ function _executar(e, metodo) {
 
       case "atualizarstatus":
         return _acaoAtualizarStatus(p);
+
+      case "registrarprontoparcial":
+        return _acaoRegistrarProntoParcial(p);
 
       case "resumo":
         return _acaoResumo(p);
@@ -396,11 +401,45 @@ function _acaoEnviarKanban(p) {
 
     var antigo = existentes[chave];
     var status = "Pendente", statusEm = "", statusPor = "";
+    var qtdPronta = 0, parcialEm = "", parcialPor = "";
     if (!resetar && antigo) {
       status = antigo.status || "Pendente";
       statusEm = antigo.status_em || "";
       statusPor = antigo.status_por || "";
+      qtdPronta = _numero(antigo.qtd_pronta);
+      parcialEm = antigo.pronto_parcial_em || "";
+      parcialPor = antigo.pronto_parcial_por || "";
+
+      // Se o saldo mudou na origem, o parcial anterior não representa mais
+      // a produção pendente (provavelmente já foi entregue). Recomeça o parcial.
+      if (_numero(antigo.saldo) !== n.saldo) {
+        qtdPronta = 0;
+        parcialEm = "";
+        parcialPor = "";
+      }
       if (status !== "Pendente") preservados++;
+    }
+
+    var saldoAtual = Math.max(0, n.saldo);
+    if (status === "Pronto" || status === "Entregue") {
+      qtdPronta = saldoAtual;
+      parcialEm = "";
+      parcialPor = "";
+    } else if (status === "Pendente") {
+      qtdPronta = 0;
+      parcialEm = "";
+      parcialPor = "";
+    } else {
+      qtdPronta = Math.min(Math.max(0, qtdPronta), saldoAtual);
+      // Dados antigos podem ter chegado ao saldo sem o status "Pronto";
+      // nesse caso o envio apenas regulariza o status.
+      if (saldoAtual > 0 && qtdPronta >= saldoAtual) {
+        status = "Pronto";
+        statusEm = agora;
+        statusPor = s.user;
+        parcialEm = "";
+        parcialPor = "";
+      }
     }
 
     linhas.push({
@@ -420,7 +459,10 @@ function _acaoEnviarKanban(p) {
       status_em: statusEm,
       status_por: statusPor,
       enviado_em: agora,
-      dados_json: n.dados_json
+      dados_json: n.dados_json,
+      qtd_pronta: qtdPronta,
+      pronto_parcial_em: parcialEm,
+      pronto_parcial_por: parcialPor
     });
   });
 
@@ -466,22 +508,29 @@ function _acaoListarPedidos(p) {
 
   pedidos = pedidos.map(function (x) {
     var dias = _diasAte(x.dt_entrega);
+    var saldo = Math.max(0, _numero(x.saldo));
+    var pronta = Math.min(Math.max(0, _numero(x.qtd_pronta)), saldo);
+    var status = STATUS.indexOf(x.status) >= 0 ? x.status : "Pendente";
+    if (status === "Pronto" || status === "Entregue") pronta = saldo;
     return {
       chave: x.chave,
       pedido: x.pedido,
       cod_confec: x.cod_confec,
       produto: x.produto,
       qtd: x.qtd,
-      saldo: x.saldo,
+      saldo: saldo,
       dt_entrega: x.dt_entrega,
       confeccao: nomes[x.codigo_confeccao] || x.confeccao,
       codigo_confeccao: x.codigo_confeccao,
       marca: x.marca,
       prioridade: x.prioridade,
       qe: x.qe,
-      status: STATUS.indexOf(x.status) >= 0 ? x.status : "Pendente",
+      status: status,
       status_em: x.status_em ? _iso(x.status_em) : "",
       status_por: x.status_por || "",
+      qtd_pronta: pronta,
+      pronto_parcial_em: x.pronto_parcial_em ? _iso(x.pronto_parcial_em) : "",
+      pronto_parcial_por: x.pronto_parcial_por || "",
       dias: dias,
       atrasado: dias !== null && dias < 0,
       extras: _parseJson(x.dados_json, {})
@@ -522,14 +571,91 @@ function _acaoAtualizarStatus(p) {
     throw _erro("Transição não permitida: " + atual + " → " + novo, "TRANSICAO");
   }
 
+  var saldo = Math.max(0, _numero(alvo.saldo));
+  var qtdPronta = (novo === "Pronto" || novo === "Entregue") ? saldo : 0;
+
   _atualizarOnde(ABAS.PEDIDOS, function (r) { return r.chave === chave; }, {
     status: novo,
     status_em: new Date(),
-    status_por: s.user
+    status_por: s.user,
+    qtd_pronta: qtdPronta,
+    pronto_parcial_em: "",
+    pronto_parcial_por: ""
   });
   _log(s.user, s.perfil, "status", chave + " → " + novo);
 
-  return { ok: true, chave: chave, status: novo, anterior: atual };
+  return {
+    ok: true, chave: chave, status: novo, anterior: atual,
+    qtd_pronta: qtdPronta, saldo: saldo
+  };
+}
+
+/**
+ * Registra quanto do pedido já está pronto, sem fechar o pedido inteiro.
+ * A quantidade informada é o TOTAL acumulado pronto (não um incremento).
+ * Ao atingir o saldo em aberto, o pedido é movido automaticamente para Pronto.
+ */
+function _acaoRegistrarProntoParcial(p) {
+  var s = _exigirSessao(p);
+  var chave = _texto(p.chave);
+  if (!chave) throw _erro("Pedido não informado.", "VALIDACAO");
+
+  var alvo = null;
+  _lerObjetos(ABAS.PEDIDOS).forEach(function (r) { if (r.chave === chave) alvo = r; });
+  if (!alvo) throw _erro("Pedido não encontrado. Recarregue a página.", "NAO_ENCONTRADO");
+
+  if (s.perfil === "Confecção" && alvo.codigo_confeccao !== s.codigo_confeccao) {
+    throw _erro("Você só pode atualizar pedidos da sua confecção.", "SEM_PERMISSAO");
+  }
+
+  var atual = STATUS.indexOf(alvo.status) >= 0 ? alvo.status : "Pendente";
+  if (atual !== "Pendente" && atual !== "Em andamento") {
+    throw _erro("Só é possível registrar pronto parcial em pedidos a produzir ou em produção.", "TRANSICAO");
+  }
+
+  var saldo = Math.max(0, _numero(alvo.saldo));
+  if (saldo <= 0) throw _erro("Este pedido não tem saldo em aberto.", "VALIDACAO");
+
+  var bruto = p.qtd_pronta;
+  if (bruto === null || bruto === undefined || String(bruto).trim() === "") {
+    throw _erro("Informe a quantidade já pronta.", "VALIDACAO");
+  }
+  if (!/^\d+$/.test(String(bruto).trim())) {
+    throw _erro("Informe uma quantidade inteira de peças.", "VALIDACAO");
+  }
+  var total = parseInt(String(bruto).trim(), 10);
+  if (total > saldo) {
+    throw _erro("A quantidade pronta não pode passar do saldo em aberto (" + saldo + " un).", "VALIDACAO");
+  }
+
+  var completo = total >= saldo;
+  var patch = {
+    qtd_pronta: total,
+    pronto_parcial_em: total > 0 ? new Date() : "",
+    pronto_parcial_por: total > 0 ? s.user : ""
+  };
+
+  var novoStatus = atual;
+  if (completo) {
+    novoStatus = "Pronto";
+    patch.status = "Pronto";
+    patch.status_em = new Date();
+    patch.status_por = s.user;
+  } else if (total > 0 && atual === "Pendente") {
+    novoStatus = "Em andamento";
+    patch.status = "Em andamento";
+    patch.status_em = new Date();
+    patch.status_por = s.user;
+  }
+
+  _atualizarOnde(ABAS.PEDIDOS, function (r) { return r.chave === chave; }, patch);
+  _log(s.user, s.perfil, "pronto_parcial",
+    chave + " · " + total + "/" + saldo + (completo ? " (pronto)" : ""));
+
+  return {
+    ok: true, chave: chave, status: novoStatus,
+    qtd_pronta: total, saldo: saldo, completo: completo
+  };
 }
 
 function _acaoResumo(p) {
@@ -545,7 +671,8 @@ function _acaoResumo(p) {
     if (!mapa[k]) {
       mapa[k] = {
         codigo: k, nome: nomes[k] || r.confeccao || k, total: 0, pecas: 0,
-        pendente: 0, andamento: 0, pronto: 0, entregue: 0, atrasados: 0
+        pendente: 0, andamento: 0, pronto: 0, entregue: 0, atrasados: 0,
+        parciais: 0, pecas_prontas: 0
       };
     }
     var m = mapa[k];
@@ -556,6 +683,9 @@ function _acaoResumo(p) {
     else if (st === "Em andamento") m.andamento++;
     else if (st === "Pronto") m.pronto++;
     else m.entregue++;
+    var pronta = Math.max(0, _numero(r.qtd_pronta));
+    m.pecas_prontas += pronta;
+    if (pronta > 0 && st === "Em andamento") m.parciais++;
     var d = _diasAte(r.dt_entrega);
     if (d !== null && d < 0 && st !== "Entregue") m.atrasados++;
   });
@@ -1080,10 +1210,10 @@ function _pedidosVisiveis(s) {
 function _aba(nome) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getSheetByName(nome);
-  if (!sh) {
-    sh = ss.insertSheet(nome);
-    _garantirCabecalho(sh, ESQUEMA[nome] || []);
-  }
+  if (!sh) sh = ss.insertSheet(nome);
+  // Garante que colunas novas (ex.: qtd_pronta) existam sem precisar
+  // rodar setup() novamente em uma planilha já em uso.
+  if (ESQUEMA[nome]) _garantirCabecalho(sh, ESQUEMA[nome]);
   return sh;
 }
 

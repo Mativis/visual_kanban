@@ -31,6 +31,8 @@
   if (!VK.state.mostrar) VK.state.mostrar = {};
   if (!VK.state.carregando) VK.state.carregando = null;
 
+  var parcialChave = "";
+
   /* ---------------- Permissões ---------------- */
 
   function movimentos(p) {
@@ -39,6 +41,22 @@
       alvos = alvos.filter(function (s) { return s !== "Entregue"; });
     }
     return alvos;
+  }
+
+  function podeParcial(p) {
+    return (Number(p.saldo) || 0) > 0 &&
+      (p.status === "Pendente" || p.status === "Em andamento");
+  }
+
+  function progressoHtml(p) {
+    var saldo = Math.max(0, Number(p.saldo) || 0);
+    var pronta = Math.min(Math.max(0, Number(p.qtd_pronta) || 0), saldo);
+    if (!pronta || p.status === "Pronto" || p.status === "Entregue") return "";
+    var pct = saldo ? Math.round((pronta / saldo) * 100) : 0;
+    return '<div class="progresso-parcial" title="' +
+      VK.esc(VK.num(pronta) + " de " + VK.num(saldo) + " peças prontas") + '">' +
+      '<div class="barra"><span style="width:' + pct + '%"></span></div>' +
+      '<small>◐ ' + VK.num(pronta) + " de " + VK.num(saldo) + " prontas</small></div>";
   }
 
   /* ---------------- Carregamento ---------------- */
@@ -169,6 +187,9 @@
     var andamento = lista.filter(function (p) { return p.status === "Em andamento"; });
     var prontos = lista.filter(function (p) { return p.status === "Pronto" || p.status === "Entregue"; });
     var pct = lista.length ? Math.round((prontos.length / lista.length) * 100) : 0;
+    var pecasProntas = andamento.reduce(function (s, p) {
+      return s + (Number(p.qtd_pronta) || 0);
+    }, 0);
 
     var html =
       kpi("Pedidos", VK.num(lista.length), VK.ehAnalista()
@@ -178,7 +199,8 @@
       kpi("Atrasados", VK.num(atrasados.length),
         atrasados.length ? "exigem atenção" : "nenhum atraso", "#ef4444") +
       kpi("Em produção", VK.num(andamento.length),
-        VK.num(andamento.reduce(function (s, p) { return s + (Number(p.saldo) || 0); }, 0)) + " un",
+        VK.num(andamento.reduce(function (s, p) { return s + (Number(p.saldo) || 0); }, 0)) + " un" +
+        (pecasProntas ? " · " + VK.num(pecasProntas) + " prontas" : ""),
         "#f59e0b") +
       kpi("Progresso", pct + "%", prontos.length + " de " + lista.length + " concluídos", "#10b981");
 
@@ -187,7 +209,12 @@
 
   function cardHtml(p) {
     var alvos = movimentos(p);
-    var botoes = alvos.map(function (alvo) {
+    var botoes = "";
+    if (podeParcial(p)) {
+      botoes += '<button type="button" data-parcial="1" class="parcial" ' +
+        'title="Registrar pronto parcial" aria-label="Registrar pronto parcial">◐</button>';
+    }
+    botoes += alvos.map(function (alvo) {
       var seta = alvo === "Pendente" ? "←" : alvo === "Pronto" ? "✓" : alvo === "Entregue" ? "📦" : "→";
       return '<button type="button" data-mover="' + VK.esc(alvo) + '" title="' +
         VK.esc(ROTULO_MOV[alvo] || alvo) + '">' + seta + "</button>";
@@ -208,6 +235,7 @@
       (p.qe ? '<span class="chip qe">Q.E ' + VK.num(p.qe) + "</span>" : "") +
       (p.marca ? '<span class="chip">' + VK.esc(p.marca) + "</span>" : "") +
       "</div>" +
+      progressoHtml(p) +
       '<div class="foot">' +
       '<span class="due ' + prazo + '">' + VK.dataBR(p.dt_entrega) +
       (p.dias === null || p.dias === undefined ? "" : " · " + VK.diasTxt(p.dias)) + "</span>" +
@@ -284,6 +312,11 @@
     pedido.status = novo;
     pedido.status_por = sessao.user || "";
     pedido.status_em = new Date().toISOString();
+    pedido.qtd_pronta = (novo === "Pronto" || novo === "Entregue")
+      ? (Number(pedido.saldo) || 0)
+      : 0;
+    pedido.pronto_parcial_em = "";
+    pedido.pronto_parcial_por = "";
     render();
 
     VK.call("atualizarstatus", { chave: chave, status: novo })
@@ -326,6 +359,13 @@
       return '<div class="item"><span>' + VK.esc(k) + "</span><strong>" + VK.esc(texto) + "</strong></div>";
     }).join("");
 
+    var saldo = Math.max(0, Number(p.saldo) || 0);
+    var pronta = Math.min(Math.max(0, Number(p.qtd_pronta) || 0), saldo);
+    var parcialLinha = pronta > 0
+      ? '<div class="item"><span>Prontas</span><strong>' +
+        VK.num(pronta) + " / " + VK.num(saldo) + " un</strong></div>"
+      : "";
+
     var etapas = ["Pendente", "Em andamento", "Pronto", "Entregue"];
     var indice = etapas.indexOf(p.status);
 
@@ -345,6 +385,7 @@
       '<div class="item"><span>Código confec</span><strong>' + VK.esc(p.cod_confec || "—") + "</strong></div>" +
       '<div class="item"><span>Quantidade</span><strong>' + VK.num(p.qtd) + " un</strong></div>" +
       '<div class="item"><span>Saldo</span><strong>' + VK.num(p.saldo) + " un</strong></div>" +
+      parcialLinha +
       '<div class="item"><span>Entrega</span><strong>' + VK.dataBR(p.dt_entrega) +
         (p.dias === null ? "" : " · " + VK.diasTxt(p.dias)) + "</strong></div>" +
       '<div class="item"><span>Prioridade</span><strong>' + VK.esc(p.prioridade) + "</strong></div>" +
@@ -355,10 +396,15 @@
         VK.esc(p.codigo_confeccao || "—") + "</strong></div>" +
       linhasExtras +
       "</div>" +
+      progressoHtml(p) +
       "<h4 style=\"margin-bottom:10px;font-size:13px\">Fluxo</h4>" + timeline;
 
-    var acoes = movimentos(p).map(function (alvo) {
-      var classe = alvo === "Pronto" ? "btn primary" : "btn";
+    var acoes = "";
+    if (podeParcial(p)) {
+      acoes += '<button class="btn primary" type="button" data-parcial="1">◐ Pronto parcial</button>';
+    }
+    acoes += movimentos(p).map(function (alvo) {
+      var classe = (alvo === "Pronto" && !podeParcial(p)) ? "btn primary" : "btn";
       return '<button class="' + classe + '" type="button" data-ir="' + VK.esc(alvo) + '">' +
         VK.esc(ROTULO_MOV[alvo] || alvo) + "</button>";
     }).join("");
@@ -377,6 +423,9 @@
         mover(chave, alvo);
       });
     });
+    VK.$$("#pedido-acoes [data-parcial]").forEach(function (b) {
+      b.addEventListener("click", function () { abrirParcial(chave); });
+    });
     VK.$$("#pedido-acoes [data-chat]").forEach(function (b) {
       b.addEventListener("click", function () {
         VK.state.thread = p.codigo_confeccao;
@@ -391,6 +440,44 @@
     VK.abrirDialogo("dlg-pedido");
   }
 
+  /* ---------------- Pronto parcial ---------------- */
+
+  function abrirParcial(chave) {
+    var p = null;
+    VK.state.pedidos.forEach(function (x) { if (x.chave === chave) p = x; });
+    if (!p) { VK.toast("Pedido não encontrado. Atualize o quadro.", "warn"); return; }
+    if (!podeParcial(p)) {
+      VK.toast("Este pedido não está em produção no momento.", "warn");
+      return;
+    }
+
+    parcialChave = chave;
+    var saldo = Math.max(0, Number(p.saldo) || 0);
+    var pronta = Math.min(Math.max(0, Number(p.qtd_pronta) || 0), saldo);
+    var pct = saldo ? Math.round((pronta / saldo) * 100) : 0;
+
+    VK.$("#parcial-titulo").textContent = "Pronto parcial · Pedido #" + (p.pedido || "—");
+    VK.$("#parcial-resumo").innerHTML =
+      "<span>Saldo em aberto: <strong>" + VK.num(saldo) + " un</strong></span>" +
+      "<span>Já prontas: <strong>" + VK.num(pronta) + " un</strong> (" + pct + "%)</span>" +
+      (p.status === "Pendente"
+        ? "<span>Ao salvar, o pedido entra em produção.</span>"
+        : "");
+
+    var input = VK.$("#parcial-qtd");
+    input.max = String(saldo);
+    input.value = String(pronta);
+    VK.$("#parcial-msg").textContent = "";
+    VK.$("#parcial-hint").textContent =
+      "Informe o total já pronto. O restante continua em produção.";
+
+    VK.fecharDialogo("dlg-pedido");
+    VK.abrirDialogo("dlg-parcial");
+    setTimeout(function () {
+      try { input.focus(); input.select(); } catch (e) { /* ignorado */ }
+    }, 60);
+  }
+
   /* ---------------- Exportação ---------------- */
 
   function exportar() {
@@ -403,6 +490,7 @@
       { titulo: "Produto", valor: "produto" },
       { titulo: "Qtd", valor: "qtd" },
       { titulo: "Saldo", valor: "saldo" },
+      { titulo: "Prontas", valor: "qtd_pronta" },
       { titulo: "Dt Entrega", valor: function (p) { return VK.dataBR(p.dt_entrega); } },
       { titulo: "Prioridade", valor: "prioridade" },
       { titulo: "Q.E", valor: "qe" },
@@ -488,6 +576,12 @@
     if (card) mover(card.getAttribute("data-chave"), el.getAttribute("data-mover"));
   });
 
+  VK.on(board, "click", "[data-parcial]", function (ev, el) {
+    ev.stopPropagation();
+    var card = el.closest(".card");
+    if (card) abrirParcial(card.getAttribute("data-chave"));
+  });
+
   VK.on(board, "click", "[data-mais]", function (ev, el) {
     var status = el.getAttribute("data-mais");
     VK.state.mostrar[status] = (VK.state.mostrar[status] || 50) + 50;
@@ -495,7 +589,7 @@
   });
 
   VK.on(board, "click", ".card", function (ev, card) {
-    if (ev.target.closest("[data-mover]")) return;
+    if (ev.target.closest("[data-mover]") || ev.target.closest("[data-parcial]")) return;
     abrirDetalhe(card.getAttribute("data-chave"));
   });
 
@@ -542,6 +636,67 @@
   });
 
   VK.$("#btn-exportar").addEventListener("click", exportar);
+
+  // Pronto parcial
+  VK.$("#parcial-tudo").addEventListener("click", function () {
+    var p = null;
+    VK.state.pedidos.forEach(function (x) { if (x.chave === parcialChave) p = x; });
+    if (!p) return;
+    var input = VK.$("#parcial-qtd");
+    input.value = String(Math.max(0, Number(p.saldo) || 0));
+    input.focus();
+  });
+
+  VK.$("#form-parcial").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+
+    var p = null;
+    VK.state.pedidos.forEach(function (x) { if (x.chave === parcialChave) p = x; });
+    if (!p) { VK.toast("Pedido não encontrado. Atualize o quadro.", "warn"); return; }
+
+    var saldo = Math.max(0, Number(p.saldo) || 0);
+    var input = VK.$("#parcial-qtd");
+    var msg = VK.$("#parcial-msg");
+    var bruto = String(input.value || "").trim();
+
+    if (!/^\d+$/.test(bruto)) {
+      msg.textContent = "Informe uma quantidade inteira de peças.";
+      input.focus();
+      return;
+    }
+    var total = parseInt(bruto, 10);
+    if (total > saldo) {
+      msg.textContent = "O máximo é o saldo em aberto (" + VK.num(saldo) + " un).";
+      input.focus();
+      return;
+    }
+
+    var btn = this.querySelector('button[type="submit"]');
+    msg.textContent = "";
+    btn.disabled = true;
+    btn.textContent = "Salvando…";
+
+    VK.call("registrarprontoparcial", { chave: parcialChave, qtd_pronta: total })
+      .then(function (r) {
+        VK.fecharDialogo("dlg-parcial");
+        if (r && r.completo) {
+          VK.toast("Pedido #" + (p.pedido || "") + " marcado como pronto (" +
+            VK.num(saldo) + " un).", "ok");
+        } else {
+          VK.toast("Pronto parcial: " + VK.num(total) + " de " +
+            VK.num(saldo) + " un.", "ok");
+        }
+        VK.atualizarBadges();
+        return carregar(false, true);
+      })
+      .catch(function (e) {
+        msg.textContent = e.message || "Não foi possível salvar.";
+      })
+      .then(function () {
+        btn.disabled = false;
+        btn.textContent = "Salvar pronto parcial";
+      });
+  });
 
   // Teclado: "/" foca a busca
   document.addEventListener("keydown", function (ev) {

@@ -246,7 +246,9 @@ saíram do quadro deixam de aparecer. O status de cada pedido, porém, é preser
 **Confecção**
 
 * Vê só a própria demanda.
-* Botões no cartão: **→ Iniciar produção** e **✓ Marcar como pronto** (e **←** para voltar).
+* Botões no cartão: **→ Iniciar produção**, **◐ Pronto parcial** e **✓ Marcar como pronto** (e **←** para voltar).
+* **Pronto parcial:** informe o total de peças já prontas. O cartão mostra a barra de progresso e o
+  restante continua em produção; ao atingir o saldo em aberto, o pedido vai automaticamente para **Pronto**.
 * Não consegue marcar **Entregue** — isso é feito pelo analista.
 * Chat direto com o analista.
 

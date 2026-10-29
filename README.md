@@ -57,7 +57,7 @@ visual_kanban/
 | Área | O que faz |
 |---|---|
 | **Kanban** | Colunas *A produzir → Em produção → Pronto → Entregue*, com filtros por confecção, prioridade, busca, “só atrasados” e ordenação. Drag & drop e botões. |
-| **Confecção** | Vê **somente a sua demanda**. Pode sinalizar *Em produção* e *Pronto* (e voltar atrás). Não consegue marcar *Entregue* — isso é confirmação do analista. |
+| **Confecção** | Vê **somente a sua demanda**. Pode sinalizar *Em produção*, registrar **pronto parcial** (quantidade já pronta) e marcar *Pronto* (e voltar atrás). Não consegue marcar *Entregue* — isso é confirmação do analista. |
 | **Analista** | Vê todas as confecções, move qualquer pedido, confirma entrega, exporta CSV e administra usuários/confecções. |
 | **Alertas** | Derivados do quadro (sem tabela extra): atrasos, entregas em até 3 dias, prioridade alta parada e pedidos sem confecção. |
 | **Chat** | Conversa direta entre analista e confecção, com contador de não lidas e marcação automática de leitura. |
@@ -92,7 +92,7 @@ Criadas automaticamente por `setup()`:
 
 | Aba | Conteúdo |
 |---|---|
-| `Pedidos` | um registro por pedido enviado (chave estável, status, quem moveu e quando) |
+| `Pedidos` | um registro por pedido enviado (chave estável, status, quem moveu e quando, quantidade pronta parcial) |
 | `Usuarios` | login, nome, perfil, código da confecção, hash da senha, salt, ativo |
 | `Sessoes` | token, usuário, criação, expiração |
 | `Confeccoes` | código, nome, aliases, ativo |
@@ -108,9 +108,9 @@ Todas as chamadas são `POST` com JSON. O painel envia como `text/plain` (evita 
 Apps Script) e, se a rede bloquear, repete via `GET ?payload=<json>`.
 
 Ações: `ping`, `login`, `logout`, `sessao`, `trocarsenha`, `listarpedidos`, `atualizarstatus`,
-`resumo`, `notificacoes`, `listarmensagens`, `enviarmensagem`, `marcarlidas`, `listarusuarios`,
-`criarusuario`, `atualizarusuario`, `excluirusuario`, `listarconfeccoes`, `atualizarconfeccao`,
-`enviarkanban`.
+`registrarprontoparcial`, `resumo`, `notificacoes`, `listarmensagens`, `enviarmensagem`, `marcarlidas`,
+`listarusuarios`, `criarusuario`, `atualizarusuario`, `excluirusuario`, `listarconfeccoes`,
+`atualizarconfeccao`, `enviarkanban`.
 
 `enviarkanban` aceita `token` **ou** `user` + `senha` (é o que o Streamlit usa) e exige perfil
 `Analista`.
