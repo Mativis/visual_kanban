@@ -66,7 +66,7 @@
     }
 
     box.innerHTML = '<table class="tabela"><thead><tr>' +
-      "<th>Confecção</th><th>Código</th><th>Pedidos</th><th></th>" +
+      "<th>Confecção</th><th>Código</th><th>Pedidos</th><th>Quebra</th><th></th>" +
       "</tr></thead><tbody>" +
       confeccoes.map(function (c) {
         return "<tr>" +
@@ -77,6 +77,9 @@
           '<td><span class="codigo" title="' + VK.esc(c.codigo) + '">' + VK.esc(c.codigo) +
           '<button type="button" data-copiar="' + VK.esc(c.codigo) + '" title="Copiar">⧉</button></span></td>' +
           "<td>" + VK.num(c.pedidos) + "</td>" +
+          "<td>" + (Number(c.pecas_quebra) > 0
+            ? '<span class="quebra-total">✂ ' + VK.num(c.pecas_quebra) + " un</span>"
+            : '<span class="sub">—</span>') + "</td>" +
           '<td><div class="acoes">' +
           '<button class="btn ghost sm" type="button" data-conf="' + VK.esc(c.codigo) + '">Editar</button>' +
           '<button class="btn ghost sm" type="button" data-novo-user="' + VK.esc(c.codigo) + '">+ Usuário</button>' +
@@ -91,13 +94,25 @@
   }
 
   function carregarTudo() {
-    return Promise.all([VK.call("listarusuarios"), VK.call("listarconfeccoes")])
-      .then(function (rs) {
-        usuarios = (rs[0] && rs[0].usuarios) || [];
-        confeccoes = (rs[1] && rs[1].confeccoes) || [];
-        renderTudo();
-      })
-      .catch(function (e) { VK.toast(e.message, "error"); });
+    return Promise.all([
+      VK.call("listarusuarios"),
+      VK.call("listarconfeccoes"),
+      VK.call("resumo").catch(function () { return { confeccoes: [] }; }),
+    ]).then(function (rs) {
+      usuarios = (rs[0] && rs[0].usuarios) || [];
+      confeccoes = (rs[1] && rs[1].confeccoes) || [];
+      var resumo = (rs[2] && rs[2].confeccoes) || [];
+      var totais = {};
+      resumo.forEach(function (c) { totais[c.codigo] = c; });
+      confeccoes.forEach(function (c) {
+        var t = totais[c.codigo];
+        if (!t) return;
+        c.pecas_prontas = Number(t.pecas_prontas) || 0;
+        c.pecas_quebra = Number(t.pecas_quebra) || 0;
+      });
+      VK.state.resumo = resumo;
+      renderTudo();
+    }).catch(function (e) { VK.toast(e.message, "error"); });
   }
 
   /* ---------------- Formulário de usuário ---------------- */

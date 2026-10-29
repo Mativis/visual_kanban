@@ -130,7 +130,7 @@
 
   /* ---------------- Filtros ---------------- */
 
-  function filtrados() {
+  function filtrados(incluirEntregues) {
     var f = VK.state.filtros;
     var lista = VK.state.pedidos.slice();
 
@@ -152,7 +152,7 @@
         return p.atrasado && p.status !== "Pronto" && p.status !== "Entregue";
       });
     }
-    if (f.ocultarEntregues) {
+    if (f.ocultarEntregues && !incluirEntregues) {
       lista = lista.filter(function (p) { return p.status !== "Entregue"; });
     }
 
@@ -185,8 +185,11 @@
       '<span class="obs">' + obs + "</span></div>";
   }
 
-  function renderKpis(lista) {
+  function renderKpis(lista, listaTotal) {
     var pecas = lista.reduce(function (s, p) { return s + (Number(p.saldo) || 0); }, 0);
+    var quebraTotal = (listaTotal || lista).reduce(function (s, p) {
+      return s + (Number(p.qtd_quebra) || 0);
+    }, 0);
     var atrasados = lista.filter(function (p) {
       return p.atrasado && p.status !== "Pronto" && p.status !== "Entregue";
     });
@@ -204,7 +207,8 @@
       kpi("Pedidos", VK.num(lista.length), VK.ehAnalista()
         ? VK.state.filtros.confeccao ? "filtro por confecção" : "todas as confecções"
         : "da sua confecção", "#6366f1") +
-      kpi("Peças", VK.num(pecas), "saldo em aberto", "#38bdf8") +
+      kpi("Peças", VK.num(pecas), "saldo em aberto" +
+        (quebraTotal ? " · " + VK.num(quebraTotal) + " un em quebra" : ""), "#38bdf8") +
       kpi("Atrasados", VK.num(atrasados.length),
         atrasados.length ? "exigem atenção" : "nenhum atraso", "#ef4444") +
       kpi("Em produção", VK.num(andamento.length),
@@ -267,7 +271,7 @@
 
   function render() {
     var lista = filtrados();
-    renderKpis(lista);
+    renderKpis(lista, filtrados(true));
 
     var ocultar = VK.state.filtros.ocultarEntregues;
     var board = VK.$("#board");
@@ -278,6 +282,7 @@
     board.innerHTML = colunas.map(function (col) {
       var itens = lista.filter(function (p) { return p.status === col.id; });
       var pecas = itens.reduce(function (s, p) { return s + (Number(p.saldo) || 0); }, 0);
+      var quebraCol = itens.reduce(function (s, p) { return s + (Number(p.qtd_quebra) || 0); }, 0);
       var limite = VK.state.mostrar[col.id] || 50;
       var visiveis = itens.slice(0, limite);
 
@@ -293,7 +298,8 @@
         '<header><span class="dot" style="--dot:' + col.cor + '"></span>' +
         "<strong>" + col.rotulo + "</strong>" +
         '<span class="count">' + itens.length + "</span>" +
-        '<span class="sum">' + VK.num(pecas) + " un</span></header>" +
+        '<span class="sum">' + VK.num(pecas) + " un" +
+        (quebraCol ? " · " + VK.num(quebraCol) + " quebra" : "") + "</span></header>" +
         '<div class="col-body">' + corpo + "</div></div>";
     }).join("");
 

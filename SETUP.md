@@ -98,7 +98,7 @@ window.VK_CONFIG = {
   pollMs: 20000,     // atualização do quadro (ms)
   chatPollMs: 8000,  // atualização do chat (ms)
   appNome: "Visual Kanban",
-  versao: "1.2.0",
+  versao: "1.2.1",
 };
 ```
 

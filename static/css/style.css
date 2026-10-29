@@ -377,6 +377,7 @@ a { color: var(--info); text-decoration: none; }
 .chip.qtd { color: #bae6fd; border-color: rgba(56, 189, 248, .3); background: rgba(56, 189, 248, .1); }
 .chip.qe { color: #fcd34d; border-color: rgba(245, 158, 11, .3); background: rgba(245, 158, 11, .1); }
 .chip.quebra { color: #fca5a5; border-color: rgba(248, 113, 113, .35); background: rgba(248, 113, 113, .12); }
+.quebra-total { color: #fca5a5; font-weight: 650; white-space: nowrap; }
 .card .foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .due { font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; color: var(--muted); }
 .due::before { content: "◷"; font-size: 11px; }
