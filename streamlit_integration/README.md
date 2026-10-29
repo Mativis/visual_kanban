@@ -15,7 +15,7 @@ Ele **não** é importado por este repositório — existe aqui para que quem fo
    ```python
    try:
        from integracao_kanban_visual import render_enviar_kanban
-       render_enviar_kanban(df_kanban, key_prefix="kb")
+       render_enviar_kanban(df_kanban, key_prefix="kb", df_filtrado=df_filtrado)
    except Exception as erro:
        st.info(f"Módulo de envio indisponível: {erro}")
    ```
@@ -28,8 +28,10 @@ Ele **não** é importado por este repositório — existe aqui para que quem fo
   `Saldo`, `Dt Entrega`, `Confecção`, `Marca`, `Prioridade`, `Q.E` + extras);
 * normaliza datas para `AAAA-MM-DD` e números para `float`;
 * envia para a ação `enviarkanban` com `user`/`senha` de um analista;
+* permite enviar **somente os pedidos filtrados** (preservando os demais) ou **todo o quadro**;
 * mostra a tabela de **códigos de vínculo** das confecções;
 * preserva o status já sinalizado pelas confecções (salvo se “Reiniciar status” estiver marcado).
+  O envio filtrado exige o Apps Script **1.2.3** ou superior.
 
 A URL, o usuário e a senha podem vir do formulário, de `st.session_state`, de `st.secrets`
 (`kanban_visual_url`, `kanban_visual_user`, `kanban_visual_senha`) ou das variáveis de ambiente
