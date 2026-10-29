@@ -7,7 +7,7 @@
    ========================================================================== */
 
 window.VK_CONFIG = {
-  apiUrl: "https://script.google.com/macros/s/AKfycbwjep36ezfH5ElRuN_6FkDbOx2-7ndG0xwkWjFh11rmxWSm_avHf07WbwNjt3lnd7wj/exec",
+  apiUrl: "https://script.google.com/macros/s/AKfycbwxWwF5JHfKcom83hPgIVd9fiOE4gdOvEUN57PA6m0ZbJpNzbZdYf7gCIcZdf5cHBIp/exec",
 
   // Intervalos de atualização automática (ms)
   pollMs: 20000,
