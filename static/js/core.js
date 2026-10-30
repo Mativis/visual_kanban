@@ -46,6 +46,7 @@
       confeccao: "",
       ordem: "data",
       atrasados: false,
+      somenteQe: false,
       ocultarEntregues: true,
     },
   };

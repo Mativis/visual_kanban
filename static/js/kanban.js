@@ -152,6 +152,9 @@
         return p.atrasado && p.status !== "Pronto" && p.status !== "Entregue";
       });
     }
+    if (f.somenteQe) {
+      lista = lista.filter(function (p) { return (Number(p.qe) || 0) > 0; });
+    }
     if (f.ocultarEntregues && !incluirEntregues) {
       lista = lista.filter(function (p) { return p.status !== "Entregue"; });
     }
@@ -306,6 +309,7 @@
     var total = VK.state.pedidos.length;
     var dica = lista.length + " de " + total + " pedido(s) exibido(s)";
     if (VK.state.filtros.atrasados) dica += " · somente atrasados";
+    if (VK.state.filtros.somenteQe) dica += " · somente com Q.E";
     if (VK.state.filtros.busca) dica += ' · busca: "' + VK.state.filtros.busca + '"';
     if (VK.state.tab === "kanban" && total === 0) {
       dica = "Nenhum pedido recebido ainda. No Visualfil, gere o Kanban e clique em “Enviar Kanban”.";
@@ -657,6 +661,13 @@
   VK.$("#f-atrasados").addEventListener("change", function (ev) {
     VK.state.filtros.atrasados = ev.target.checked;
     VK.$("#lbl-atrasados").classList.toggle("on", ev.target.checked);
+    VK.state.mostrar = {};
+    render();
+  });
+
+  VK.$("#f-qe").addEventListener("change", function (ev) {
+    VK.state.filtros.somenteQe = ev.target.checked;
+    VK.$("#lbl-qe").classList.toggle("on", ev.target.checked);
     VK.state.mostrar = {};
     render();
   });
