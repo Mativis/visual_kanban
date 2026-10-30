@@ -569,6 +569,7 @@ dialog[open] { animation: subir .16s ease-out; }
 .parcial-resumo span:last-child { color: #7dd3fc; }
 .campo-qtd { display: flex; align-items: center; gap: 8px; }
 .campo-qtd .input { flex: 1; min-width: 0; }
+.campo-qtd .btn { flex: none; white-space: nowrap; }
 
 .detalhe { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 18px; margin-bottom: 16px; }
 .detalhe .item { display: flex; flex-direction: column; gap: 2px; }

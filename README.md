@@ -41,7 +41,9 @@ visual_kanban/
 │       ├── core.js       cliente HTTP, sessão, utilitários, toasts
 │       ├── auth.js       login
 │       ├── app.js        navegação, cabeçalho, alertas, polling
-│       ├── kanban.js     quadro, filtros, drag & drop, detalhe, CSV
+│       ├── kanban.js     quadro, filtros, drag & drop, detalhe, Excel/CSV
+│       ├── vendor/
+│       │   └── exceljs.min.js  geração do Excel .xlsx (MIT)
 │       ├── chat.js       conversas analista ↔ confecção
 │       └── admin.js      usuários e confecções
 ├── streamlit_integration/
@@ -60,9 +62,9 @@ visual_kanban/
 
 | Área | O que faz |
 |---|---|
-| **Kanban** | Colunas *A produzir → Em produção → Pronto → Entregue*, com filtros por confecção, prioridade, busca, “só atrasados”, “somente Q.E” e ordenação. Drag & drop e botões. |
+| **Kanban** | Colunas *A produzir → Em produção → Pronto → Entregue*, com filtros por confecção, prioridade, busca, “só atrasados”, “somente Q.E” e ordenação. Drag & drop e botões. Exporta **Excel (.xlsx)** com resumo visual e o quadro detalhado, além de CSV. |
 | **Confecção** | Vê **somente a sua demanda**. Pode sinalizar *Em produção*, registrar **pronto parcial** e **quebra de tecido** (peças que não virão) e marcar *Pronto* (e voltar atrás). O pedido fecha quando **prontas + quebra** alcançam o saldo. Não consegue marcar *Entregue* nem reabrir um pedido já entregue — isso é feito pelo analista. |
-| **Analista** | Vê todas as confecções, move qualquer pedido, confirma entrega, exporta CSV e administra usuários/confecções. O total de **quebra de tecido** aparece no resumo do quadro e na tabela de confecções. |
+| **Analista** | Vê todas as confecções, move qualquer pedido, confirma entrega, exporta Excel/CSV e administra usuários/confecções. O total de **quebra de tecido** aparece no resumo do quadro e na tabela de confecções. |
 | **Alertas** | Derivados do quadro (sem tabela extra): atrasos, entregas em até 3 dias, prioridade alta parada e pedidos sem confecção. |
 | **Chat** | Conversa direta entre analista e confecção, com contador de não lidas e marcação automática de leitura. |
 | **Administração** | Cria/edita/desativa usuários, redefine senhas, edita nomes/aliases das confecções e copia o **código de vínculo**. |

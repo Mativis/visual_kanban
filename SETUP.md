@@ -101,13 +101,13 @@ window.VK_CONFIG = {
   pollMs: 20000,     // atualização do quadro (ms)
   chatPollMs: 8000,  // atualização do chat (ms)
   appNome: "Visual Kanban",
-  versao: "1.2.4",
+  versao: "1.2.5",
 };
 ```
 
 Pronto: ao abrir o painel, o campo já vem preenchido para todos.
 
-> Se uma URL antiga (versão 1.1.0) estiver salva no navegador, o painel **1.2.4**
+> Se uma URL antiga (versão 1.1.0) estiver salva no navegador, o painel **1.2.5**
 > remove automaticamente essa URL e passa a usar a URL do `config.js`. Quando o
 > servidor conectado for anterior à **1.2.0**, aparece um aviso no topo do painel
 > com o botão **Atualizar painel**. Em caso de dúvida, use **Ctrl+F5**.
@@ -250,7 +250,8 @@ O status de cada pedido, porém, é preservado — inclusive se a **data de entr
 
 **Analista**
 
-* `Kanban`: acompanha tudo, arrasta cartões, confirma **Entregue**, filtra por confecção, exporta CSV.
+* `Kanban`: acompanha tudo, arrasta cartões, confirma **Entregue**, filtra por confecção, exporta **Excel**
+  (abas **Resumo** e **Kanban**, com KPIs, filtros aplicados e tabelas por status/confecção/prioridade) ou CSV.
 * `Chat`: conversa com cada confecção; o contador vermelho mostra mensagens não lidas.
 * `Alertas`: atrasos, entregas em ≤ 3 dias, prioridade alta parada e pedidos sem confecção.
 * `Administração`: usuários e confecções.
@@ -260,9 +261,10 @@ O status de cada pedido, porém, é preservado — inclusive se a **data de entr
 * Vê só a própria demanda.
 * Botões no cartão: **→ Iniciar produção**, **◐ Produção / quebra** e **✓ Marcar como pronto** (e **←** para voltar).
 * **Produção / quebra:** informe o total de peças já prontas e o total de peças que não virão por falta de
-  tecido. O cartão mostra a barra de progresso e o restante continua em produção; quando **prontas + quebra**
+  tecido. O botão **Restante** de cada campo calcula o valor complementar (`prontas + quebra = saldo`).
+  O cartão mostra a barra de progresso e o restante continua em produção; quando **prontas + quebra**
   atingem o saldo em aberto, o pedido vai automaticamente para **Pronto**.
-* A quebra fica registrada no cartão, no detalhe e na exportação CSV. Ao marcar **Pronto** manualmente, o
+* A quebra fica registrada no cartão, no detalhe e nas exportações Excel/CSV. Ao marcar **Pronto** manualmente, o
   sistema considera prontas as peças restantes (`saldo - quebra`).
 * Não consegue marcar **Entregue** — isso é feito pelo analista.
 * Também não consegue reabrir um pedido já **Entregue**; somente o analista pode devolvê-lo para **Pronto**.

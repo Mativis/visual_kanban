@@ -9,7 +9,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Visual Kanban · Painel</title>
-  <link rel="stylesheet" href="css/style.css?v=1.2.4">
+  <link rel="stylesheet" href="css/style.css?v=1.2.5">
 </head>
 <body class="app-body">
 
@@ -87,7 +87,8 @@
           </label>
         </div>
         <div class="tools">
-          <button class="btn ghost" id="btn-exportar" type="button">⤓ CSV</button>
+          <button class="btn ghost" id="btn-exportar" type="button">⤓ Excel</button>
+          <button class="btn ghost" id="btn-exportar-csv" type="button">CSV</button>
           <button class="btn ghost" id="btn-atualizar" type="button">↻ Atualizar</button>
         </div>
       </div>
@@ -261,8 +262,11 @@
         </div>
         <div class="field">
           <label for="parcial-quebra">Quebra de tecido (total)</label>
-          <input class="input" id="parcial-quebra" type="number" min="0" step="1"
-                 inputmode="numeric" value="0" required>
+          <div class="campo-qtd">
+            <input class="input" id="parcial-quebra" type="number" min="0" step="1"
+                   inputmode="numeric" value="0" required>
+            <button class="btn ghost sm" type="button" id="parcial-quebra-tudo">Restante</button>
+          </div>
           <span class="hint">
             Peças que não virão por falta de tecido. Elas entram no total para concluir o pedido.
           </span>
@@ -360,11 +364,12 @@
 
   <div class="toasts" id="toasts"></div>
 
-  <script src="js/config.js?v=1.2.4"></script>
-  <script src="js/core.js?v=1.2.4"></script>
-  <script src="js/app.js?v=1.2.4"></script>
-  <script src="js/kanban.js?v=1.2.4"></script>
-  <script src="js/chat.js?v=1.2.4"></script>
-  <script src="js/admin.js?v=1.2.4"></script>
+  <script src="js/config.js?v=1.2.5"></script>
+  <script src="js/core.js?v=1.2.5"></script>
+  <script src="js/app.js?v=1.2.5"></script>
+  <script src="js/vendor/exceljs.min.js?v=1.2.5"></script>
+  <script src="js/kanban.js?v=1.2.5"></script>
+  <script src="js/chat.js?v=1.2.5"></script>
+  <script src="js/admin.js?v=1.2.5"></script>
 </body>
 </html>

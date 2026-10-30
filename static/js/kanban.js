@@ -520,7 +520,550 @@
 
   /* ---------------- Exportação ---------------- */
 
-  function exportar() {
+  var CORES_XLSX = {
+    marca: "4F46E5",
+    marcaEscura: "312E81",
+    marcaClara: "EEF2FF",
+    texto: "0F172A",
+    suave: "64748B",
+    fundo: "F8FAFC",
+    branco: "FFFFFF",
+    borda: "E2E8F0",
+    azul: "E0F2FE",
+    azulTexto: "0369A1",
+    ambar: "FEF3C7",
+    ambarTexto: "92400E",
+    verde: "DCFCE7",
+    verdeTexto: "047857",
+    vermelho: "FEE2E2",
+    vermelhoTexto: "B91C1C",
+    cinza: "E2E8F0",
+    cinzaTexto: "475569",
+  };
+
+  var CORES_STATUS = {
+    "Pendente": { fundo: CORES_XLSX.azul, texto: CORES_XLSX.azulTexto },
+    "Em andamento": { fundo: CORES_XLSX.ambar, texto: CORES_XLSX.ambarTexto },
+    "Pronto": { fundo: CORES_XLSX.verde, texto: CORES_XLSX.verdeTexto },
+    "Entregue": { fundo: CORES_XLSX.cinza, texto: CORES_XLSX.cinzaTexto },
+  };
+
+  var CORES_PRIORIDADE_XLSX = {
+    "Atrasado": { fundo: "FEE2E2", texto: "B91C1C" },
+    "Alta": { fundo: "FFEDD5", texto: "9A3412" },
+    "Média": { fundo: "FEF3C7", texto: "92400E" },
+    "Baixa": { fundo: "DCFCE7", texto: "047857" },
+  };
+
+  function corArgb(hex) {
+    return "FF" + String(hex || "000000").replace("#", "").toUpperCase();
+  }
+
+  function pintarCelula(cell, fundo) {
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: corArgb(fundo) } };
+  }
+
+  function bordaCelula(cell, cor) {
+    var corBorda = corArgb(cor || CORES_XLSX.borda);
+    var lado = { style: "thin", color: { argb: corBorda } };
+    cell.border = { top: lado, left: lado, bottom: lado, right: lado };
+  }
+
+  function fonteCelula(cell, tamanho, negrito, cor) {
+    cell.font = {
+      name: "Segoe UI",
+      size: tamanho || 11,
+      bold: !!negrito,
+      color: { argb: corArgb(cor || CORES_XLSX.texto) },
+    };
+  }
+
+  function alinhamentoCelula(cell, horizontal, vertical, wrap) {
+    cell.alignment = {
+      horizontal: horizontal || "left",
+      vertical: vertical || "middle",
+      wrapText: !!wrap,
+    };
+  }
+
+  function estiloCabecalhoXlsx(cell) {
+    pintarCelula(cell, CORES_XLSX.marcaEscura);
+    fonteCelula(cell, 10, true, CORES_XLSX.branco);
+    alinhamentoCelula(cell, "center", "middle", true);
+    bordaCelula(cell, CORES_XLSX.marcaEscura);
+  }
+
+  function dataXlsx(iso) {
+    var m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return iso ? String(iso) : "—";
+    return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  }
+
+  function progressoPedido(p) {
+    var saldo = Math.max(0, Number(p.saldo) || 0);
+    if (p.status === "Pronto" || p.status === "Entregue") return saldo ? 1 : 0;
+    var pronta = Math.max(0, Number(p.qtd_pronta) || 0);
+    var quebra = Math.max(0, Number(p.qtd_quebra) || 0);
+    return saldo ? Math.min(1, (pronta + quebra) / saldo) : 0;
+  }
+
+  function filtrosResumo() {
+    var f = VK.state.filtros;
+    var partes = [];
+    if (f.confeccao) {
+      var nome = f.confeccao;
+      (VK.state.resumo || []).some(function (c) {
+        if (c.codigo === f.confeccao) { nome = c.nome; return true; }
+        return false;
+      });
+      partes.push("Confecção: " + nome);
+    } else {
+      partes.push("Todas as confecções");
+    }
+    if (f.prioridade) partes.push("Prioridade: " + f.prioridade);
+    if (f.busca) partes.push('Busca: "' + f.busca + '"');
+    if (f.atrasados) partes.push("Somente atrasados");
+    if (f.somenteQe) partes.push("Somente com Q.E");
+    if (!f.ocultarEntregues) partes.push("Inclui entregues");
+    return partes.join("  ·  ");
+  }
+
+  function metricasLista(lista) {
+    var pecas = 0, quebra = 0, qe = 0, prontas = 0;
+    var atrasados = 0, andamento = 0, concluidos = 0;
+    lista.forEach(function (p) {
+      pecas += Number(p.saldo) || 0;
+      quebra += Number(p.qtd_quebra) || 0;
+      qe += Number(p.qe) || 0;
+      prontas += Number(p.qtd_pronta) || 0;
+      if (p.status === "Em andamento") andamento += 1;
+      if (p.status === "Pronto" || p.status === "Entregue") concluidos += 1;
+      if (p.atrasado && p.status !== "Pronto" && p.status !== "Entregue") atrasados += 1;
+    });
+    return {
+      pedidos: lista.length,
+      pecas: pecas,
+      prontas: prontas,
+      quebra: quebra,
+      qe: qe,
+      atrasados: atrasados,
+      andamento: andamento,
+      concluidos: concluidos,
+      progresso: lista.length ? concluidos / lista.length : 0,
+    };
+  }
+
+  function resumoPorStatus(lista) {
+    return COLUNAS.map(function (col) {
+      var itens = lista.filter(function (p) { return p.status === col.id; });
+      return {
+        rotulo: col.rotulo,
+        pedidos: itens.length,
+        pecas: itens.reduce(function (s, p) { return s + (Number(p.saldo) || 0); }, 0),
+        quebra: itens.reduce(function (s, p) { return s + (Number(p.qtd_quebra) || 0); }, 0),
+        qe: itens.reduce(function (s, p) { return s + (Number(p.qe) || 0); }, 0),
+        cor: col.id,
+      };
+    });
+  }
+
+  function resumoPorConfeccao(lista) {
+    var mapa = {};
+    lista.forEach(function (p) {
+      var nome = p.confeccao || "Sem Confecção";
+      if (!mapa[nome]) {
+        mapa[nome] = { nome: nome, pedidos: 0, pecas: 0, quebra: 0, qe: 0 };
+      }
+      mapa[nome].pedidos += 1;
+      mapa[nome].pecas += Number(p.saldo) || 0;
+      mapa[nome].quebra += Number(p.qtd_quebra) || 0;
+      mapa[nome].qe += Number(p.qe) || 0;
+    });
+    return Object.keys(mapa).map(function (nome) { return mapa[nome]; }).sort(function (a, b) {
+      if (b.pecas !== a.pecas) return b.pecas - a.pecas;
+      return a.nome.localeCompare(b.nome);
+    });
+  }
+
+  function resumoPorPrioridade(lista) {
+    var ordem = ["Atrasado", "Alta", "Média", "Baixa"];
+    return ordem.map(function (prio) {
+      var itens = lista.filter(function (p) { return String(p.prioridade) === prio; });
+      return {
+        rotulo: prio,
+        pedidos: itens.length,
+        pecas: itens.reduce(function (s, p) { return s + (Number(p.saldo) || 0); }, 0),
+        quebra: itens.reduce(function (s, p) { return s + (Number(p.qtd_quebra) || 0); }, 0),
+        qe: itens.reduce(function (s, p) { return s + (Number(p.qe) || 0); }, 0),
+      };
+    }).filter(function (linha) { return linha.pedidos > 0; });
+  }
+
+  function tituloSecaoXlsx(ws, linha, titulo) {
+    var cell = ws.getCell(linha, 1);
+    cell.value = titulo;
+    fonteCelula(cell, 12, true, CORES_XLSX.marcaEscura);
+    alinhamentoCelula(cell, "left", "middle");
+    ws.getRow(linha).height = 24;
+  }
+
+  function tabelaXlsx(ws, linha, titulo, cabecalhos, linhas, estilizarLinha) {
+    tituloSecaoXlsx(ws, linha, titulo);
+    var linhaCab = linha + 1;
+    cabecalhos.forEach(function (tituloCol, indice) {
+      var cell = ws.getCell(linhaCab, indice + 1);
+      cell.value = tituloCol;
+      estiloCabecalhoXlsx(cell);
+    });
+    ws.getRow(linhaCab).height = 25;
+
+    linhas.forEach(function (valores, indiceLinha) {
+      var numeroLinha = linhaCab + 1 + indiceLinha;
+      valores.forEach(function (valor, indiceColuna) {
+        var cell = ws.getCell(numeroLinha, indiceColuna + 1);
+        cell.value = valor;
+        fonteCelula(cell, 10, false, CORES_XLSX.texto);
+        alinhamentoCelula(cell, indiceColuna === 0 ? "left" : "right", "middle", true);
+        pintarCelula(cell, indiceLinha % 2 ? CORES_XLSX.fundo : CORES_XLSX.branco);
+        bordaCelula(cell);
+      });
+      if (estilizarLinha) estilizarLinha(ws, numeroLinha, valores, indiceLinha);
+      ws.getRow(numeroLinha).height = 21;
+    });
+    return linhaCab + linhas.length + 2;
+  }
+
+  function criarAbaResumo(wb, lista) {
+    var ws = wb.addWorksheet("Resumo", {
+      views: [{ showGridLines: false }],
+      properties: { defaultRowHeight: 20 },
+    });
+    ws.columns = [
+      { width: 24 }, { width: 16 }, { width: 16 }, { width: 14 },
+      { width: 14 }, { width: 14 }, { width: 14 }, { width: 16 },
+    ];
+
+    ws.mergeCells("A1:H1");
+    var titulo = ws.getCell("A1");
+    titulo.value = "VISUAL KANBAN";
+    pintarCelula(titulo, CORES_XLSX.marcaEscura);
+    fonteCelula(titulo, 22, true, CORES_XLSX.branco);
+    alinhamentoCelula(titulo, "left", "middle");
+    titulo.alignment.indent = 1;
+    ws.getRow(1).height = 44;
+
+    ws.mergeCells("A2:H2");
+    var subtitulo = ws.getCell("A2");
+    subtitulo.value = "Relatório de produção · gerado em " + VK.dataHora(new Date().toISOString());
+    pintarCelula(subtitulo, CORES_XLSX.marca);
+    fonteCelula(subtitulo, 11, false, CORES_XLSX.branco);
+    alinhamentoCelula(subtitulo, "left", "middle");
+    subtitulo.alignment.indent = 1;
+    ws.getRow(2).height = 24;
+    ws.getRow(3).height = 8;
+
+    var m = metricasLista(lista);
+    var kpis = [
+      { rotulo: "PEDIDOS", valor: VK.num(m.pedidos), cor: "6366F1" },
+      { rotulo: "PEÇAS EM ABERTO", valor: VK.num(m.pecas), cor: "0EA5E9" },
+      { rotulo: "Q.E", valor: VK.num(m.qe), cor: "F59E0B" },
+      { rotulo: "QUEBRA", valor: VK.num(m.quebra), cor: "EF4444" },
+      { rotulo: "ATRASADOS", valor: VK.num(m.atrasados), cor: "EF4444" },
+      { rotulo: "EM PRODUÇÃO", valor: VK.num(m.andamento), cor: "F59E0B" },
+      { rotulo: "CONCLUÍDOS", valor: VK.num(m.concluidos), cor: "10B981" },
+      { rotulo: "PROGRESSO", valor: Math.round(m.progresso * 100) + "%", cor: "10B981" },
+    ];
+
+    kpis.forEach(function (item, indice) {
+      var coluna = indice + 1;
+      var rotulo = ws.getCell(4, coluna);
+      rotulo.value = item.rotulo;
+      pintarCelula(rotulo, CORES_XLSX.marcaClara);
+      fonteCelula(rotulo, 9, true, CORES_XLSX.marcaEscura);
+      alinhamentoCelula(rotulo, "center", "middle", true);
+      bordaCelula(rotulo, "C7D2FE");
+
+      var valor = ws.getCell(5, coluna);
+      valor.value = item.valor;
+      pintarCelula(valor, CORES_XLSX.branco);
+      fonteCelula(valor, 18, true, item.cor);
+      alinhamentoCelula(valor, "center", "middle", true);
+      bordaCelula(valor, "C7D2FE");
+    });
+    ws.getRow(4).height = 26;
+    ws.getRow(5).height = 38;
+
+    var filtrosTitulo = ws.getCell(7, 1);
+    filtrosTitulo.value = "Filtros aplicados";
+    fonteCelula(filtrosTitulo, 11, true, CORES_XLSX.marcaEscura);
+
+    ws.mergeCells("A8:H8");
+    var filtros = ws.getCell("A8");
+    filtros.value = filtrosResumo();
+    pintarCelula(filtros, CORES_XLSX.fundo);
+    fonteCelula(filtros, 10, false, CORES_XLSX.suave);
+    alinhamentoCelula(filtros, "left", "middle", true);
+    filtros.alignment.indent = 1;
+    bordaCelula(filtros);
+    ws.getRow(8).height = 30;
+
+    var proximaLinha = 10;
+    var statusLinhas = resumoPorStatus(lista).map(function (s) {
+      return [s.rotulo, s.pedidos, s.pecas, s.quebra, s.qe];
+    });
+    proximaLinha = tabelaXlsx(
+      ws,
+      proximaLinha,
+      "Distribuição por status",
+      ["Status", "Pedidos", "Peças", "Quebra", "Q.E"],
+      statusLinhas,
+      function (sheet, linha, valores) {
+        var cell = sheet.getCell(linha, 1);
+        var mapa = { "A produzir": "Pendente", "Em produção": "Em andamento" };
+        var chave = mapa[String(valores[0])] || String(valores[0]);
+        var cor = CORES_STATUS[chave] || { fundo: CORES_XLSX.marcaClara, texto: CORES_XLSX.marcaEscura };
+        pintarCelula(cell, cor.fundo);
+        fonteCelula(cell, 10, true, cor.texto);
+      }
+    );
+
+    var confLinhas = resumoPorConfeccao(lista).map(function (c) {
+      return [c.nome, c.pedidos, c.pecas, c.quebra, c.qe];
+    });
+    proximaLinha = tabelaXlsx(
+      ws,
+      proximaLinha,
+      "Por confecção",
+      ["Confecção", "Pedidos", "Peças", "Quebra", "Q.E"],
+      confLinhas
+    );
+
+    var prioLinhas = resumoPorPrioridade(lista).map(function (p) {
+      return [p.rotulo, p.pedidos, p.pecas, p.quebra, p.qe];
+    });
+    proximaLinha = tabelaXlsx(
+      ws,
+      proximaLinha,
+      "Por prioridade",
+      ["Prioridade", "Pedidos", "Peças", "Quebra", "Q.E"],
+      prioLinhas,
+      function (sheet, linha, valores) {
+        var cell = sheet.getCell(linha, 1);
+        var cor = CORES_PRIORIDADE_XLSX[String(valores[0])] ||
+          { fundo: CORES_XLSX.marcaClara, texto: CORES_XLSX.marcaEscura };
+        pintarCelula(cell, cor.fundo);
+        fonteCelula(cell, 10, true, cor.texto);
+      }
+    );
+
+    var rodape = ws.getCell(proximaLinha, 1);
+    rodape.value = "Visual Kanban · dados filtrados no painel no momento da exportação.";
+    fonteCelula(rodape, 9, false, CORES_XLSX.suave);
+
+    ws.pageSetup = {
+      orientation: "landscape",
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      horizontalCentered: true,
+      margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 },
+    };
+    ws.headerFooter.oddFooter = "&LVisual Kanban&C" + filtrosResumo() + "&R&P de &N";
+    return ws;
+  }
+
+  function criarAbaKanban(wb, lista) {
+    var ws = wb.addWorksheet("Kanban", {
+      views: [{ state: "frozen", ySplit: 4, showGridLines: false }],
+      properties: { defaultRowHeight: 20 },
+    });
+    ws.columns = [
+      { width: 16 }, { width: 12 }, { width: 11 }, { width: 38 },
+      { width: 24 }, { width: 9 }, { width: 9 }, { width: 9 },
+      { width: 8 }, { width: 12 }, { width: 12 }, { width: 11 }, { width: 24 },
+    ];
+
+    ws.mergeCells("A1:M1");
+    var titulo = ws.getCell("A1");
+    titulo.value = "KANBAN DE PRODUÇÃO";
+    pintarCelula(titulo, CORES_XLSX.marcaEscura);
+    fonteCelula(titulo, 20, true, CORES_XLSX.branco);
+    alinhamentoCelula(titulo, "left", "middle");
+    titulo.alignment.indent = 1;
+    ws.getRow(1).height = 40;
+
+    ws.mergeCells("A2:M2");
+    var subtitulo = ws.getCell("A2");
+    subtitulo.value = VK.num(lista.length) + " pedido(s) exibido(s) · " + filtrosResumo();
+    pintarCelula(subtitulo, CORES_XLSX.marcaClara);
+    fonteCelula(subtitulo, 10, false, CORES_XLSX.marcaEscura);
+    alinhamentoCelula(subtitulo, "left", "middle");
+    subtitulo.alignment.indent = 1;
+    ws.getRow(2).height = 24;
+    ws.getRow(3).height = 8;
+
+    var cabecalhos = [
+      "Status", "Pedido", "Cód Confec", "Produto", "Confecção",
+      "Saldo", "Prontas", "Quebra", "Q.E", "Entrega",
+      "Prioridade", "Progresso", "Atualizado",
+    ];
+    cabecalhos.forEach(function (texto, indice) {
+      var cell = ws.getCell(4, indice + 1);
+      cell.value = texto;
+      estiloCabecalhoXlsx(cell);
+    });
+    ws.getRow(4).height = 30;
+
+    lista.forEach(function (p, indice) {
+      var linha = 5 + indice;
+      var saldo = Math.max(0, Number(p.saldo) || 0);
+      var pronta = Math.max(0, Number(p.qtd_pronta) || 0);
+      var quebra = Math.min(Math.max(0, Number(p.qtd_quebra) || 0), saldo);
+      var qe = Math.max(0, Number(p.qe) || 0);
+      var atualizado = p.status_por
+        ? p.status_por + " · " + VK.dataHora(p.status_em)
+        : "—";
+      var valores = [
+        p.status || "Pendente",
+        p.pedido || "—",
+        p.cod_confec || "—",
+        p.produto || "—",
+        p.confeccao || "Sem Confecção",
+        saldo,
+        pronta,
+        quebra,
+        qe,
+        dataXlsx(p.dt_entrega),
+        p.prioridade || "Baixa",
+        progressoPedido(p),
+        atualizado,
+      ];
+
+      valores.forEach(function (valor, indiceColuna) {
+        var cell = ws.getCell(linha, indiceColuna + 1);
+        cell.value = valor;
+        fonteCelula(cell, 10, false, CORES_XLSX.texto);
+        alinhamentoCelula(
+          cell,
+          [1, 2, 5, 6, 7, 8, 9, 10, 11].indexOf(indiceColuna) >= 0 ? "center" : "left",
+          "middle",
+          indiceColuna === 3 || indiceColuna === 4
+        );
+        pintarCelula(cell, indice % 2 ? CORES_XLSX.fundo : CORES_XLSX.branco);
+        bordaCelula(cell);
+      });
+
+      var statusCell = ws.getCell(linha, 1);
+      var corStatus = CORES_STATUS[p.status] || CORES_STATUS["Pendente"];
+      pintarCelula(statusCell, corStatus.fundo);
+      fonteCelula(statusCell, 10, true, corStatus.texto);
+
+      var prioCell = ws.getCell(linha, 11);
+      var corPrio = CORES_PRIORIDADE_XLSX[p.prioridade] || CORES_PRIORIDADE_XLSX["Baixa"];
+      pintarCelula(prioCell, corPrio.fundo);
+      fonteCelula(prioCell, 10, true, corPrio.texto);
+
+      var quebraCell = ws.getCell(linha, 8);
+      if (quebra > 0) {
+        pintarCelula(quebraCell, CORES_XLSX.vermelho);
+        fonteCelula(quebraCell, 10, true, CORES_XLSX.vermelhoTexto);
+      }
+
+      var qeCell = ws.getCell(linha, 9);
+      if (qe > 0) {
+        pintarCelula(qeCell, CORES_XLSX.ambar);
+        fonteCelula(qeCell, 10, true, CORES_XLSX.ambarTexto);
+      }
+
+      var entregaCell = ws.getCell(linha, 10);
+      if (entregaCell.value instanceof Date) entregaCell.numFmt = "dd/mm/yyyy";
+
+      var progressoCell = ws.getCell(linha, 12);
+      progressoCell.numFmt = "0%";
+      fonteCelula(progressoCell, 10, true,
+        progressoCell.value >= 1 ? CORES_XLSX.verdeTexto :
+          progressoCell.value > 0 ? CORES_XLSX.ambarTexto : CORES_XLSX.vermelhoTexto);
+      pintarCelula(progressoCell,
+        progressoCell.value >= 1 ? CORES_XLSX.verde :
+          progressoCell.value > 0 ? CORES_XLSX.ambar : CORES_XLSX.vermelho);
+
+      ws.getRow(linha).height = 24;
+    });
+
+    var ultimaLinha = 4 + lista.length;
+    ws.autoFilter = "A4:M" + ultimaLinha;
+
+    var rodapeLinha = ultimaLinha + 2;
+    ws.mergeCells(rodapeLinha, 1, rodapeLinha, 13);
+    var rodape = ws.getCell(rodapeLinha, 1);
+    rodape.value = "Gerado pelo Visual Kanban em " + VK.dataHora(new Date().toISOString()) +
+      " · use os filtros do painel para exportar recortes específicos.";
+    fonteCelula(rodape, 9, false, CORES_XLSX.suave);
+    alinhamentoCelula(rodape, "left", "middle");
+
+    ws.pageSetup = {
+      orientation: "landscape",
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      horizontalCentered: true,
+      printTitlesRow: "1:4",
+      margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.5, header: 0.2, footer: 0.2 },
+    };
+    ws.headerFooter.oddFooter = "&LVisual Kanban&R&P de &N";
+    return ws;
+  }
+
+  function baixarExcel(lista) {
+    if (!window.ExcelJS) {
+      VK.toast("Biblioteca de Excel não carregou. Recarregue o painel com Ctrl+F5.", "error");
+      return;
+    }
+
+    var botao = VK.$("#btn-exportar");
+    if (botao && botao.disabled) return;
+    if (botao) {
+      botao.disabled = true;
+      botao.textContent = "Gerando…";
+    }
+
+    var wb = new ExcelJS.Workbook();
+    wb.creator = "Visual Kanban";
+    wb.lastModifiedBy = "Visual Kanban";
+    wb.created = new Date();
+    wb.modified = new Date();
+
+    criarAbaResumo(wb, lista);
+    criarAbaKanban(wb, lista);
+
+    wb.xlsx.writeBuffer().then(function (buffer) {
+      var blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "kanban_visual_" + new Date().toISOString().slice(0, 10) + ".xlsx";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 800);
+      VK.toast(VK.num(lista.length) + " pedido(s) exportado(s) em Excel.", "ok");
+    }).catch(function (erro) {
+      VK.toast("Falha ao gerar o Excel: " + (erro && erro.message ? erro.message : erro), "error");
+    }).then(function () {
+      if (botao) {
+        botao.disabled = false;
+        botao.textContent = "⤓ Excel";
+      }
+    });
+  }
+
+  function exportarExcel() {
+    var lista = filtrados();
+    if (!lista.length) { VK.toast("Nada para exportar com os filtros atuais.", "warn"); return; }
+    baixarExcel(lista);
+  }
+
+  function exportarCSV() {
     var lista = filtrados();
     if (!lista.length) { VK.toast("Nada para exportar com os filtros atuais.", "warn"); return; }
 
@@ -539,7 +1082,7 @@
       { titulo: "Status", valor: "status" },
       { titulo: "Atualizado por", valor: "status_por" },
     ]);
-    VK.toast(lista.length + " pedido(s) exportado(s).", "ok");
+    VK.toast(lista.length + " pedido(s) exportado(s) em CSV.", "ok");
   }
 
   /* ---------------- API pública ---------------- */
@@ -683,7 +1226,10 @@
     carregar(true, true).then(function () { VK.toast("Quadro atualizado.", "info", 1600); });
   });
 
-  VK.$("#btn-exportar").addEventListener("click", exportar);
+  VK.$("#btn-exportar").addEventListener("click", exportarExcel);
+
+  var btnCsv = VK.$("#btn-exportar-csv");
+  if (btnCsv) btnCsv.addEventListener("click", exportarCSV);
 
   // Produção / pronto parcial
   VK.$("#parcial-tudo").addEventListener("click", function () {
@@ -697,6 +1243,19 @@
     var input = VK.$("#parcial-qtd");
     input.value = String(Math.max(0, saldo - Math.min(quebra, saldo)));
     input.focus();
+  });
+
+  VK.$("#parcial-quebra-tudo").addEventListener("click", function () {
+    var p = null;
+    VK.state.pedidos.forEach(function (x) { if (x.chave === parcialChave) p = x; });
+    if (!p) return;
+    var saldo = Math.max(0, Number(p.saldo) || 0);
+    var inputPronta = VK.$("#parcial-qtd");
+    var brutoPronta = String(inputPronta.value || "").trim();
+    var pronta = /^\d+$/.test(brutoPronta) ? parseInt(brutoPronta, 10) : 0;
+    var inputQuebra = VK.$("#parcial-quebra");
+    inputQuebra.value = String(Math.max(0, saldo - Math.min(pronta, saldo)));
+    inputQuebra.focus();
   });
 
   VK.$("#form-parcial").addEventListener("submit", function (ev) {
