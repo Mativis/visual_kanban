@@ -23,6 +23,12 @@
   } catch (e) {
     VK.appVersao = "";
   }
+  try {
+    VK.webVersao = String(bridge.otaVersion ? bridge.otaVersion() : "");
+  } catch (e) {
+    VK.webVersao = "";
+  }
+  if (!VK.webVersao && VK.config) VK.webVersao = String(VK.config.versao || "");
 
   /* O Android chama estes retornos depois de gravar (ou falhar) o arquivo. */
   window.VKNative = {
@@ -38,6 +44,14 @@
       pendente = null;
       VK.toast("Não foi possível salvar o arquivo: " +
         (mensagem || "erro desconhecido"), "error");
+    },
+
+    onOtaInfo: function (mensagem) {
+      if (mensagem) VK.toast(mensagem, "ok");
+    },
+
+    onOtaError: function (mensagem) {
+      if (mensagem) VK.toast(mensagem, "error");
     },
   };
 
@@ -70,6 +84,24 @@
     };
     leitor.readAsDataURL(blob);
   };
+
+  /* Verificação manual de OTA no menu do usuário. */
+  var botaoAtualizar = document.getElementById("btn-verificar-ota");
+  if (botaoAtualizar && typeof bridge.checkUpdate === "function") {
+    botaoAtualizar.classList.remove("hide");
+    botaoAtualizar.addEventListener("click", function () {
+      if (botaoAtualizar.disabled) return;
+      botaoAtualizar.disabled = true;
+      VK.toast("Verificando atualizações…");
+      try {
+        bridge.checkUpdate();
+      } catch (e) {
+        VK.toast("Não foi possível verificar: " +
+          (e && e.message ? e.message : e), "error");
+      }
+      setTimeout(function () { botaoAtualizar.disabled = false; }, 6000);
+    });
+  }
 
   /* Links externos abrem no navegador do celular. */
   document.addEventListener("click", function (ev) {

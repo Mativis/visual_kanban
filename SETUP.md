@@ -101,13 +101,13 @@ window.VK_CONFIG = {
   pollMs: 20000,     // atualização do quadro (ms)
   chatPollMs: 8000,  // atualização do chat (ms)
   appNome: "Visual Kanban",
-  versao: "1.2.6",
+  versao: "1.2.7",
 };
 ```
 
 Pronto: ao abrir o painel, o campo já vem preenchido para todos.
 
-> Se uma URL antiga (versão 1.1.0) estiver salva no navegador, o painel **1.2.6**
+> Se uma URL antiga (versão 1.1.0) estiver salva no navegador, o painel **1.2.7**
 > remove automaticamente essa URL e passa a usar a URL do `config.js`. Quando o
 > servidor conectado for anterior à **1.2.0**, aparece um aviso no topo do painel
 > com o botão **Atualizar painel**. Em caso de dúvida, use **Ctrl+F5**.
@@ -323,16 +323,54 @@ Apps Script. Não existe backend diferente para o celular.
 
 ### Instalar
 
-1. Baixe `dist/VisualKanban-1.2.6.apk` (ou o artefato gerado no GitHub Actions).
+1. Baixe `dist/VisualKanban-1.2.7.apk` (ou o artefato gerado no GitHub Actions).
 2. No celular, permita **instalar apps de fontes desconhecidas** para o navegador
    ou gerenciador de arquivos usado na instalação.
 3. Abra o APK e instale. O ícone **Visual Kanban** aparece na tela inicial.
 4. Entre com o usuário e senha de sempre. Se a conexão não estiver configurada,
    use **⚙ Configurar conexão** e cole a URL `/exec` do Apps Script.
 
-Atualizações futuras devem ser instaladas **por cima** da versão atual (mesma
-assinatura). Desinstalar apaga os dados locais do app (sessão e URL salva); os
-dados de produção ficam na planilha.
+Atualizações do **painel** chegam pelo OTA (veja abaixo). O APK só precisa ser
+instalado por cima quando houver mudança nativa (permissões, ponte de arquivos,
+ícone etc.), sempre com a mesma assinatura. Desinstalar apaga os dados locais do
+app (sessão e URL salva); os dados de produção ficam na planilha.
+
+### Atualizações OTA (sem reinstalar)
+
+O app guarda uma cópia do painel e verifica `ota/manifest.json` no GitHub:
+
+```
+https://raw.githubusercontent.com/Mativis/visual_kanban/main/ota/manifest.json
+```
+
+* Se a versão do manifesto for maior que a ativa, baixa o ZIP, confere o
+  **SHA-256**, valida `www/index.html`, `www/app.html` e a versão do
+  `config.js`, e passa a servir a pasta atualizada.
+* Se o download, o checksum ou a extração falharem, nada muda: o painel
+  embutido no APK continua funcionando.
+* Se o pacote atualizado não abrir, o app volta sozinho para o painel embutido.
+* A checagem automática roda ao abrir o app e no máximo a cada 6 h. Também dá
+  para forçar no menu do usuário → **Verificar atualizações**.
+* O APK não é atualizado por esse mecanismo; ele continua na versão instalada.
+
+### Publicar uma atualização OTA
+
+1. Altere o painel em `static/`.
+2. Suba a versão em `static/js/config.js` e nos `?v=` de `app.html`/`index.html`
+   (o mesmo número também aparece em `app.py`).
+3. Gere o pacote e o manifesto:
+
+   ```powershell
+   python android/tools/gerar_ota.py --notas "O que mudou nesta versão"
+   ```
+
+4. Confira `ota/manifest.json` e commite `static/` + `ota/` e faça push.
+5. No celular, abra o app e use **Verificar atualizações** (ou aguarde a
+   checagem automática).
+
+O script recusa gerar o pacote se o `?v=` das páginas não bater com a versão do
+`config.js`. Para reverter uma atualização, volte o `ota/manifest.json` para a
+versão anterior (e mantenha o ZIP correspondente em `ota/`).
 
 ### Exportar Excel/CSV no celular
 
@@ -340,7 +378,7 @@ As exportações são gravadas em **Downloads/Visual Kanban/**. O app mostra o
 caminho no aviso. No Android 7–9, a primeira exportação pede a permissão
 “Armazenamento”; sem ela o arquivo não é gravado.
 
-### Gerar uma nova versão
+### Gerar um novo APK (mudanças nativas)
 
 1. Atualize `static/js/config.js` (`versao`) — o `versionCode` do APK é derivado
    dessa versão.
@@ -349,6 +387,12 @@ caminho no aviso. No Android 7–9, a primeira exportação pede a permissão
 
    ```powershell
    Get-FileHash dist/VisualKanban-X.Y.Z.apk -Algorithm SHA256
+   ```
+
+4. Gere também o pacote OTA da mesma versão (para quem já tem o app):
+
+   ```powershell
+   python android/tools/gerar_ota.py --notas "Nova versão do app"
    ```
 
 O workflow `.github/workflows/android-apk.yml` também monta o APK; para gerar um

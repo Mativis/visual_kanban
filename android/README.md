@@ -17,11 +17,43 @@ Excel/CSV em `Downloads/Visual Kanban/` e o botão voltar do Android.
 - O backend continua sendo o Google Sheets + Apps Script configurado no próprio
   painel.
 
+## OTA (atualização do painel sem reinstalar o APK)
+
+- No primeiro uso e a cada 6 h, o app baixa
+  `https://raw.githubusercontent.com/Mativis/visual_kanban/main/ota/manifest.json`.
+- Se `versao` for maior que a ativa, baixa o ZIP, confere o SHA-256, valida a
+  estrutura (`www/index.html`, `www/app.html`, `www/js/config.js`) e a versão
+  dentro do `config.js`, e ativa a pasta em `filesDir/ota/<versão>`.
+- O WebView passa a servir essa pasta via `InternalStoragePathHandler`
+  (`OtaManager`/`OtaPacote`). Os assets do APK continuam como fallback.
+- Se a página atualizada falhar ao abrir, o app desativa o pacote e volta ao
+  embutido. Se o download/checksum falhar, nada muda.
+- O botão **Verificar atualizações** no menu do usuário força a checagem
+  (`AndroidBridge.checkUpdate()`).
+- O APK em si não é trocado por OTA; mudanças nativas exigem um novo APK.
+
+Gerar o pacote (da raiz do repositório):
+
+```powershell
+python android/tools/gerar_ota.py --notas "O que mudou"
+```
+
+O manifesto e o ZIP ficam em `../ota/`. O script exige que `config.js` e os
+`?v=` de `app.html`/`index.html` estejam na mesma versão.
+
+Testar as regras de extração/versão na JVM (sem aparelho):
+
+```powershell
+javac -encoding UTF-8 -d "$env:TEMP\vk-ota-test" `
+  app/src/main/java/br/com/visualkanban/app/OtaPacote.java tools/TestarOta.java
+java -cp "$env:TEMP\vk-ota-test" br.com.visualkanban.app.TestarOta
+```
+
 ## Versão
 
 A versão do APK vem de `../static/js/config.js` (`versao`). Não edite à mão no
 Gradle: altere o painel, faça o build e o `versionCode` será
-`major*10000 + minor*100 + patch` (ex.: `1.2.6` → `10206`).
+`major*10000 + minor*100 + patch` (ex.: `1.2.7` → `10207`).
 
 ## Build local
 

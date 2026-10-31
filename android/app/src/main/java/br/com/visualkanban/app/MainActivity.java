@@ -50,22 +50,24 @@ public class MainActivity extends Activity {
 
     private static final String TAG = "VisualKanban";
     private static final String HOST = "appassets.androidplatform.net";
-    private static final String URL_INICIAL = "https://" + HOST + "/assets/www/index.html";
+    private static final String URL_PAINEL = "https://" + HOST + "/assets/www/";
+    private static final String URL_INICIAL = URL_PAINEL + "index.html";
     private static final String PASTA_DOWNLOADS = "Visual Kanban";
     private static final int PEDIDO_PERMISSAO_ARMAZENAMENTO = 41;
 
     private WebView webView;
     private ProgressBar carregando;
-    private WebViewAssetLoader assetLoader;
+    private volatile WebViewAssetLoader assetLoader;
+    private OtaManager ota;
+    private boolean rollbackTentado;
     private final AtomicReference<String[]> salvamentoPendente = new AtomicReference<>();
 
     @Override
     protected void onCreate(Bundle estadoSalvo) {
         super.onCreate(estadoSalvo);
 
-        assetLoader = new WebViewAssetLoader.Builder()
-                .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
-                .build();
+        ota = new OtaManager(this, versaoApp());
+        assetLoader = criarAssetLoader();
 
         FrameLayout raiz = new FrameLayout(this);
         raiz.setBackgroundColor(Color.parseColor("#0a1020"));
@@ -85,8 +87,35 @@ public class MainActivity extends Activity {
         if (estadoSalvo != null) {
             webView.restoreState(estadoSalvo);
         } else {
-            webView.loadUrl(URL_INICIAL);
+            webView.loadUrl(urlComVersao(URL_INICIAL));
         }
+    }
+
+    private WebViewAssetLoader criarAssetLoader() {
+        WebViewAssetLoader.Builder construtor = new WebViewAssetLoader.Builder();
+        File atualizacao = ota == null ? null : ota.raizAtiva();
+        if (atualizacao != null) {
+            Log.i(TAG, "Servindo painel OTA de " + atualizacao.getAbsolutePath());
+            construtor.addPathHandler("/assets/",
+                    new WebViewAssetLoader.InternalStoragePathHandler(this, atualizacao));
+        } else {
+            construtor.addPathHandler("/assets/",
+                    new WebViewAssetLoader.AssetsPathHandler(this));
+        }
+        return construtor.build();
+    }
+
+    private String urlComVersao(String endereco) {
+        Uri base = Uri.parse(endereco);
+        return base.buildUpon().appendQueryParameter("v", ota == null ? "1" : ota.versaoAtiva())
+                .build().toString();
+    }
+
+    private void recarregarPainel() {
+        if (webView == null) return;
+        String atual = webView.getUrl();
+        if (atual == null || !atual.startsWith(URL_PAINEL)) atual = URL_INICIAL;
+        webView.loadUrl(urlComVersao(atual));
     }
 
     @SuppressWarnings("SetJavaScriptEnabled")
@@ -130,14 +159,25 @@ public class MainActivity extends Activity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 esconderCarregando();
+                rollbackTentado = false;
+                verificarOta(false);
             }
 
             @Override
             public void onReceivedError(WebView view, WebResourceRequest pedido, WebResourceError erro) {
-                if (pedido.isForMainFrame()) {
-                    Log.e(TAG, "Falha ao abrir o painel: " + erro.getDescription());
-                    esconderCarregando();
+                if (!pedido.isForMainFrame()) return;
+
+                Log.e(TAG, "Falha ao abrir o painel: " + erro.getDescription());
+                if (!rollbackTentado && ota != null && ota.usandoOta()) {
+                    // Pacote OTA inválido/corrompido: volta para o painel embutido no APK.
+                    rollbackTentado = true;
+                    Log.w(TAG, "Desativando OTA e recarregando o pacote embutido");
+                    ota.desativarAtual();
+                    assetLoader = criarAssetLoader();
+                    recarregarPainel();
+                    return;
                 }
+                esconderCarregando();
             }
         });
 
@@ -159,6 +199,41 @@ public class MainActivity extends Activity {
         if (carregando != null && carregando.getVisibility() != View.GONE) {
             carregando.setVisibility(View.GONE);
         }
+    }
+
+    private void verificarOta(boolean manual) {
+        if (ota == null) return;
+        ota.verificar(manual, new OtaManager.Callback() {
+            @Override
+            public void semAtualizacao(String versao, boolean manual) {
+                if (manual) {
+                    avaliar("window.VKNative && VKNative.onOtaInfo("
+                            + JSONObject.quote("Você já está na versão " + versao + ".")
+                            + ");");
+                }
+            }
+
+            @Override
+            public void instalada(String versao) {
+                runOnUiThread(() -> {
+                    Toast.makeText(MainActivity.this,
+                            "Painel atualizado para " + versao + ".",
+                            Toast.LENGTH_SHORT).show();
+                    assetLoader = criarAssetLoader();
+                    rollbackTentado = false;
+                    recarregarPainel();
+                });
+            }
+
+            @Override
+            public void erro(String mensagem, boolean manual) {
+                if (manual) {
+                    avaliar("window.VKNative && VKNative.onOtaError("
+                            + JSONObject.quote("Não foi possível atualizar: " + mensagem)
+                            + ");");
+                }
+            }
+        });
     }
 
     private String versaoApp() {
@@ -226,7 +301,10 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (webView != null) webView.onResume();
+        if (webView != null) {
+            webView.onResume();
+            if (webView.getUrl() != null) verificarOta(false);
+        }
     }
 
     @Override
@@ -253,6 +331,16 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String appVersion() {
             return versaoApp();
+        }
+
+        @JavascriptInterface
+        public String otaVersion() {
+            return ota == null ? "" : ota.versaoAtiva();
+        }
+
+        @JavascriptInterface
+        public void checkUpdate() {
+            verificarOta(true);
         }
 
         @JavascriptInterface

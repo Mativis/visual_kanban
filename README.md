@@ -81,8 +81,13 @@ O mesmo painel também roda como app Android, sem duplicar código: o projeto
 `android/` empacota `static/` numa WebView e serve os arquivos em
 `https://appassets.androidplatform.net`, preservando `localStorage`, `fetch` e CORS.
 
-* **Download:** [`dist/VisualKanban-1.2.6.apk`](dist/VisualKanban-1.2.6.apk)
-  (SHA-256 em [`dist/VisualKanban-1.2.6.apk.sha256`](dist/VisualKanban-1.2.6.apk.sha256)).
+* **Download:** [`dist/VisualKanban-1.2.7.apk`](dist/VisualKanban-1.2.7.apk)
+  (SHA-256 em [`dist/VisualKanban-1.2.7.apk.sha256`](dist/VisualKanban-1.2.7.apk.sha256)).
+* **Atualizações OTA:** o painel HTML/CSS/JS é atualizado pelo app sem reinstalar o
+  APK. Ele consulta `ota/manifest.json`, confere o **SHA-256** do pacote e aplica
+  a nova versão; se algo falhar, continua usando o painel embutido. A verificação
+  acontece ao abrir e no máximo a cada 6 h, e também pelo menu do usuário →
+  **Verificar atualizações**.
 * No app, **Excel** e **CSV** são gravados em `Downloads/Visual Kanban/` em vez de
   passar pelo download do navegador. No Android 10+ não é preciso permissão; no
   Android 7–9 o app pede acesso ao armazenamento na primeira exportação.

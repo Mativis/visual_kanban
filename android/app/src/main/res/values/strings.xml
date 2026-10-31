@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Visual Kanban</string>
+    <string name="ota_manifest_url" translatable="false">https://raw.githubusercontent.com/Mativis/visual_kanban/main/ota/manifest.json</string>
 </resources>
