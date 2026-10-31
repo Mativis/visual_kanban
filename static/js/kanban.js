@@ -1040,13 +1040,12 @@
       var blob = new Blob([buffer], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
-      var a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "kanban_visual_" + new Date().toISOString().slice(0, 10) + ".xlsx";
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 800);
-      VK.toast(VK.num(lista.length) + " pedido(s) exportado(s) em Excel.", "ok");
+      var nome = "kanban_visual_" + new Date().toISOString().slice(0, 10) + ".xlsx";
+      VK.salvarArquivo(blob, nome, function (caminho) {
+        VK.toast(caminho
+          ? "Excel salvo em " + caminho
+          : VK.num(lista.length) + " pedido(s) exportado(s) em Excel.", "ok");
+      });
     }).catch(function (erro) {
       VK.toast("Falha ao gerar o Excel: " + (erro && erro.message ? erro.message : erro), "error");
     }).then(function () {
@@ -1081,8 +1080,11 @@
       { titulo: "Confecção", valor: "confeccao" },
       { titulo: "Status", valor: "status" },
       { titulo: "Atualizado por", valor: "status_por" },
-    ]);
-    VK.toast(lista.length + " pedido(s) exportado(s) em CSV.", "ok");
+    ], function (caminho) {
+      VK.toast(caminho
+        ? "CSV salvo em " + caminho
+        : VK.num(lista.length) + " pedido(s) exportado(s) em CSV.", "ok");
+    });
   }
 
   /* ---------------- API pública ---------------- */

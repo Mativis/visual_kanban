@@ -1,0 +1,14 @@
+# Arquivos locais de build
+local.properties
+.gradle/
+build/
+app/build/
+captures/
+*.iml
+.idea/
+
+# Assinatura: NUNCA versionar a chave nem as senhas.
+keystore.properties
+signing/
+*.jks
+*.keystore

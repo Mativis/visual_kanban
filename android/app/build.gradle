@@ -1,0 +1,84 @@
+plugins {
+    id "com.android.application"
+}
+
+/* A versão do APK acompanha a versão do painel (static/js/config.js). */
+def configJs = rootProject.file("../static/js/config.js")
+def versaoPainel = "1.0.0"
+if (configJs.exists()) {
+    def encontrada = configJs.getText("UTF-8") =~ /versao:\s*"([^"]+)"/
+    if (encontrada.find()) versaoPainel = encontrada.group(1)
+}
+def partesVersao = versaoPainel.tokenize(".").collect { (it.replaceAll(/\D/, "") ?: "0") as int }
+while (partesVersao.size() < 3) { partesVersao << 0 }
+def codigoVersao = partesVersao[0] * 10000 + partesVersao[1] * 100 + partesVersao[2]
+
+/* Assinatura opcional: se android/keystore.properties existir, o release é assinado. */
+def propsArquivo = rootProject.file("keystore.properties")
+def propsAssinatura = new Properties()
+if (propsArquivo.exists()) propsArquivo.withInputStream { propsAssinatura.load(it) }
+
+/* O painel web é a única fonte dos arquivos: static/ é copiado para assets/www no build. */
+def webAssets = rootProject.file("../static")
+def webAssetsGerados = new File(buildDir, "generated/webAssets")
+
+tasks.register("syncWebAssets", Sync) {
+    from(webAssets) {
+        exclude "**/*.map"
+        exclude "**/_*.html"
+    }
+    into new File(webAssetsGerados, "www")
+}
+tasks.named("preBuild").configure { dependsOn("syncWebAssets") }
+
+android {
+    namespace "br.com.visualkanban.app"
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "br.com.visualkanban.app"
+        minSdk 24
+        targetSdk 34
+        versionCode codigoVersao
+        versionName versaoPainel
+        resValue "string", "app_version", versaoPainel
+    }
+
+    signingConfigs {
+        release {
+            if (propsArquivo.exists()) {
+                storeFile rootProject.file(propsAssinatura["storeFile"])
+                storePassword propsAssinatura["storePassword"]
+                keyAlias propsAssinatura["keyAlias"]
+                keyPassword propsAssinatura["keyPassword"]
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            shrinkResources false
+            if (propsArquivo.exists()) signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    sourceSets {
+        main {
+            assets.srcDirs += webAssetsGerados
+        }
+    }
+
+    lint {
+        abortOnError false
+    }
+}
+
+dependencies {
+    implementation "androidx.webkit:webkit:1.12.1"
+}

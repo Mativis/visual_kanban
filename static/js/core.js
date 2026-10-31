@@ -286,7 +286,19 @@
     area.remove();
   };
 
-  VK.baixarCSV = function (nome, linhas, colunas) {
+  /* Salva um Blob como arquivo. No navegador dispara o download; no app Android
+     (WebView) a versão nativa substitui esta função para gravar em Downloads. */
+  VK.salvarArquivo = function (blob, nome, aoConcluir) {
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = nome;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 800);
+    if (typeof aoConcluir === "function") setTimeout(function () { aoConcluir(null); }, 0);
+  };
+
+  VK.baixarCSV = function (nome, linhas, colunas, aoConcluir) {
     var sep = ";";
     var cab = colunas.map(function (c) { return '"' + c.titulo.replace(/"/g, '""') + '"'; }).join(sep);
     var corpo = linhas.map(function (l) {
@@ -297,12 +309,7 @@
       }).join(sep);
     }).join("\r\n");
     var blob = new Blob(["\uFEFF" + cab + "\r\n" + corpo], { type: "text/csv;charset=utf-8;" });
-    var a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = nome;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    VK.salvarArquivo(blob, nome, aoConcluir);
   };
 
   /* ---------------- Diálogo de conexão (compartilhado) ---------------- */

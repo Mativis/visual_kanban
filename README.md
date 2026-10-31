@@ -39,6 +39,7 @@ visual_kanban/
 │   └── js/
 │       ├── config.js     URL da API e intervalos de atualização
 │       ├── core.js       cliente HTTP, sessão, utilitários, toasts
+│       ├── native.js     ponte com o app Android (só age no APK)
 │       ├── auth.js       login
 │       ├── app.js        navegação, cabeçalho, alertas, polling
 │       ├── kanban.js     quadro, filtros, drag & drop, detalhe, Excel/CSV
@@ -46,6 +47,8 @@ visual_kanban/
 │       │   └── exceljs.min.js  geração do Excel .xlsx (MIT)
 │       ├── chat.js       conversas analista ↔ confecção
 │       └── admin.js      usuários e confecções
+├── android/              casca Android (WebView) que gera o APK
+├── dist/                 APK assinado + SHA-256 da versão atual
 ├── streamlit_integration/
 │   └── enviar_kanban.py  cópia de referência do módulo do Visualfil
 ├── SETUP.md              passo a passo de instalação
@@ -69,6 +72,26 @@ visual_kanban/
 | **Chat** | Conversa direta entre analista e confecção, com contador de não lidas e marcação automática de leitura. |
 | **Administração** | Cria/edita/desativa usuários, redefine senhas, edita nomes/aliases das confecções e copia o **código de vínculo**. |
 | **Sessão** | Token de 12 h com renovação deslizante; senhas com SHA-256 + salt por usuário. |
+
+---
+
+## App Android (APK)
+
+O mesmo painel também roda como app Android, sem duplicar código: o projeto
+`android/` empacota `static/` numa WebView e serve os arquivos em
+`https://appassets.androidplatform.net`, preservando `localStorage`, `fetch` e CORS.
+
+* **Download:** [`dist/VisualKanban-1.2.6.apk`](dist/VisualKanban-1.2.6.apk)
+  (SHA-256 em [`dist/VisualKanban-1.2.6.apk.sha256`](dist/VisualKanban-1.2.6.apk.sha256)).
+* No app, **Excel** e **CSV** são gravados em `Downloads/Visual Kanban/` em vez de
+  passar pelo download do navegador. No Android 10+ não é preciso permissão; no
+  Android 7–9 o app pede acesso ao armazenamento na primeira exportação.
+* Links externos (por exemplo, abrir a planilha) saem do app e abrem no navegador.
+  O botão voltar fecha o diálogo aberto antes de sair da tela.
+* O backend continua sendo o **Google Sheets + Apps Script**: nada muda na
+  configuração da planilha. A URL da API é a mesma do painel web.
+* Requisitos: Android 7.0 (API 24) ou superior.
+* Para gerar o APK, assinar e publicar, veja [`android/README.md`](android/README.md).
 
 ---
 

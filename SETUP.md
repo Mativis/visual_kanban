@@ -101,13 +101,13 @@ window.VK_CONFIG = {
   pollMs: 20000,     // atualização do quadro (ms)
   chatPollMs: 8000,  // atualização do chat (ms)
   appNome: "Visual Kanban",
-  versao: "1.2.5",
+  versao: "1.2.6",
 };
 ```
 
 Pronto: ao abrir o painel, o campo já vem preenchido para todos.
 
-> Se uma URL antiga (versão 1.1.0) estiver salva no navegador, o painel **1.2.5**
+> Se uma URL antiga (versão 1.1.0) estiver salva no navegador, o painel **1.2.6**
 > remove automaticamente essa URL e passa a usar a URL do `config.js`. Quando o
 > servidor conectado for anterior à **1.2.0**, aparece um aviso no topo do painel
 > com o botão **Atualizar painel**. Em caso de dúvida, use **Ctrl+F5**.
@@ -313,3 +313,48 @@ O status de cada pedido, porém, é preservado — inclusive se a **data de entr
 - [ ] Usuários das confecções com perfil **Confecção** (nunca Analista).
 - [ ] Implantação “Executar como: Eu” e “Acesso: Qualquer pessoa”.
 - [ ] Nenhuma senha em texto: a API usa SHA-256 + salt por usuário.
+
+---
+
+## 12. App Android (APK)
+
+O APK é uma casca WebView: usa exatamente o mesmo painel de `static/` e o mesmo
+Apps Script. Não existe backend diferente para o celular.
+
+### Instalar
+
+1. Baixe `dist/VisualKanban-1.2.6.apk` (ou o artefato gerado no GitHub Actions).
+2. No celular, permita **instalar apps de fontes desconhecidas** para o navegador
+   ou gerenciador de arquivos usado na instalação.
+3. Abra o APK e instale. O ícone **Visual Kanban** aparece na tela inicial.
+4. Entre com o usuário e senha de sempre. Se a conexão não estiver configurada,
+   use **⚙ Configurar conexão** e cole a URL `/exec` do Apps Script.
+
+Atualizações futuras devem ser instaladas **por cima** da versão atual (mesma
+assinatura). Desinstalar apaga os dados locais do app (sessão e URL salva); os
+dados de produção ficam na planilha.
+
+### Exportar Excel/CSV no celular
+
+As exportações são gravadas em **Downloads/Visual Kanban/**. O app mostra o
+caminho no aviso. No Android 7–9, a primeira exportação pede a permissão
+“Armazenamento”; sem ela o arquivo não é gravado.
+
+### Gerar uma nova versão
+
+1. Atualize `static/js/config.js` (`versao`) — o `versionCode` do APK é derivado
+   dessa versão.
+2. Siga [`android/README.md`](android/README.md) para build e assinatura.
+3. Copie o APK para `dist/` e gere o SHA-256:
+
+   ```powershell
+   Get-FileHash dist/VisualKanban-X.Y.Z.apk -Algorithm SHA256
+   ```
+
+O workflow `.github/workflows/android-apk.yml` também monta o APK; para gerar um
+release assinado, cadastre os secrets `ANDROID_KEYSTORE_BASE64`,
+`ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` e `ANDROID_KEY_PASSWORD`.
+
+> **Importante:** guarde `android/signing/visual-kanban.jks` e as senhas de
+> `android/keystore.properties` fora do Git. Sem essa chave não é possível
+> atualizar um APK já instalado.
