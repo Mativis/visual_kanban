@@ -88,8 +88,8 @@ O mesmo painel também roda como app Android, sem duplicar código: o projeto
 `android/` empacota `static/` numa WebView e serve os arquivos em
 `https://appassets.androidplatform.net`, preservando `localStorage`, `fetch` e CORS.
 
-* **Download:** [`dist/VisualKanban-1.2.7.apk`](dist/VisualKanban-1.2.7.apk)
-  (SHA-256 em [`dist/VisualKanban-1.2.7.apk.sha256`](dist/VisualKanban-1.2.7.apk.sha256)).
+* **Download:** [`dist/VisualKanban-1.2.9.apk`](dist/VisualKanban-1.2.9.apk)
+  (SHA-256 em [`dist/VisualKanban-1.2.9.apk.sha256`](dist/VisualKanban-1.2.9.apk.sha256)).
 * **Atualizações OTA:** o painel HTML/CSS/JS é atualizado pelo app sem reinstalar o
   APK. Ele consulta `ota/manifest.json`, confere o **SHA-256** do pacote e aplica
   a nova versão; se algo falhar, continua usando o painel embutido. A verificação
@@ -104,7 +104,9 @@ O mesmo painel também roda como app Android, sem duplicar código: o projeto
 * O backend continua sendo o **Google Sheets + Apps Script**: nada muda na
   configuração da planilha. A URL da API é a mesma do painel web.
 * Requisitos: Android 7.0 (API 24) ou superior.
-* Para gerar o APK, assinar e publicar, veja [`android/README.md`](android/README.md).
+* Para gerar o APK, assinar e publicar, use [`android/gerar_apk.ps1`](android/gerar_apk.ps1)
+  (ou dê duplo clique em `android/gerar_apk.bat`). Detalhes em
+  [`android/README.md`](android/README.md).
 
 ---
 

@@ -53,9 +53,49 @@ java -cp "$env:TEMP\vk-ota-test" br.com.visualkanban.app.TestarOta
 
 A versão do APK vem de `../static/js/config.js` (`versao`). Não edite à mão no
 Gradle: altere o painel, faça o build e o `versionCode` será
-`major*10000 + minor*100 + patch` (ex.: `1.2.7` → `10207`).
+`major*10000 + minor*100 + patch` (ex.: `1.2.9` → `10209`).
 
-## Build local
+## Gerar o APK (script)
+
+O script faz tudo: valida JDK/SDK, lê a versão do painel, confere o
+cache-busting (`?v=`), verifica a chave, roda o Gradle, valida a assinatura, a
+versão do APK e se o certificado é o mesmo do APK anterior em `dist/`, copia
+para `dist/` e grava o `.sha256`.
+
+Na pasta `visual_kanban/android`:
+
+```powershell
+.\gerar_apk.ps1
+```
+
+Ou dê duplo clique em `gerar_apk.bat` (equivale ao comando acima).
+
+Opções:
+
+```powershell
+# Saída do zero (clean)
+.\gerar_apk.ps1 -Clean
+
+# Gera também o OTA (zip + manifesto) com notas de novidades
+.\gerar_apk.ps1 -Ota -Notas "Correções no quadro"
+
+# Apenas em último caso: aceita APK sem assinatura (não instala/atualiza)
+.\gerar_apk.ps1 -PermitirNaoAssinado
+```
+
+Saída esperada:
+
+```
+dist/VisualKanban-<versao>.apk
+dist/VisualKanban-<versao>.apk.sha256
+```
+
+O script usa o JDK/SDK de `local.properties` (`jdk.dir` e `sdk.dir`) ou, se
+não houver, as variáveis `JAVA_HOME`/`ANDROID_HOME`. Ele não substitui a chave
+de assinatura: para atualizar um app já instalado, `keystore.properties` e
+`signing/visual-kanban.jks` precisam ser os mesmos de sempre.
+
+## Build local (manual)
 
 Pré-requisitos: JDK 17, Android SDK (platform 35 e build-tools 35.0.0).
 
@@ -66,7 +106,9 @@ $env:ANDROID_HOME = "C:\caminho\para\Android\Sdk"
 .\gradlew.bat assembleRelease
 ```
 
-O APK sai em `app/build/outputs/apk/release/app-release.apk`.
+O APK sai em `app/build/outputs/apk/release/app-release.apk`. O script acima já
+faz a validação e a cópia para `dist/`, então o build manual só é necessário
+para depuração.
 
 Para rodar no emulador/aparelho:
 
