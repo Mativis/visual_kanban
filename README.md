@@ -88,8 +88,8 @@ O mesmo painel também roda como app Android, sem duplicar código: o projeto
 `android/` empacota `static/` numa WebView e serve os arquivos em
 `https://appassets.androidplatform.net`, preservando `localStorage`, `fetch` e CORS.
 
-* **Download:** [`dist/VisualKanban-1.2.9.apk`](dist/VisualKanban-1.2.9.apk)
-  (SHA-256 em [`dist/VisualKanban-1.2.9.apk.sha256`](dist/VisualKanban-1.2.9.apk.sha256)).
+* **Download:** [`dist/VisualKanban-1.3.0.apk`](dist/VisualKanban-1.3.0.apk)
+  (SHA-256 em [`dist/VisualKanban-1.3.0.apk.sha256`](dist/VisualKanban-1.3.0.apk.sha256)).
 * **Atualizações OTA:** o painel HTML/CSS/JS é atualizado pelo app sem reinstalar o
   APK. Ele consulta `ota/manifest.json`, confere o **SHA-256** do pacote e aplica
   a nova versão; se algo falhar, continua usando o painel embutido. A verificação

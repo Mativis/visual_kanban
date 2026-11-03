@@ -8,10 +8,10 @@
   if (!VK.$("#board")) return;
 
   var COLUNAS = [
-    { id: "Pendente", rotulo: "A produzir", cor: "#38bdf8" },
-    { id: "Em andamento", rotulo: "Em produção", cor: "#f59e0b" },
-    { id: "Pronto", rotulo: "Pronto", cor: "#10b981" },
-    { id: "Entregue", rotulo: "Entregue", cor: "#64748b" },
+    { id: "Pendente", rotulo: "A produzir", cor: "#0284c7" },
+    { id: "Em andamento", rotulo: "Em produção", cor: "#d97706" },
+    { id: "Pronto", rotulo: "Pronto", cor: "#059669" },
+    { id: "Entregue", rotulo: "Entregue", cor: "#7a879c" },
   ];
 
   // No celular o quadro começa com menos cartões para pintar mais rápido.
@@ -234,17 +234,17 @@
     var html =
       kpi("Pedidos", VK.num(lista.length), VK.ehAnalista()
         ? VK.state.filtros.confeccao ? "filtro por confecção" : "todas as confecções"
-        : "da sua confecção", "#6366f1") +
+        : "da sua confecção", "#4f46e5") +
       kpi("Peças", VK.num(pecas), "saldo em aberto" +
-        (quebraTotal ? " · " + VK.num(quebraTotal) + " un em quebra" : ""), "#38bdf8") +
+        (quebraTotal ? " · " + VK.num(quebraTotal) + " un em quebra" : ""), "#0284c7") +
       kpi("Atrasados", VK.num(atrasados.length),
-        atrasados.length ? "exigem atenção" : "nenhum atraso", "#ef4444") +
+        atrasados.length ? "exigem atenção" : "nenhum atraso", "#dc2626") +
       kpi("Em produção", VK.num(andamento.length),
         VK.num(andamento.reduce(function (s, p) { return s + (Number(p.saldo) || 0); }, 0)) + " un" +
         (pecasProntas ? " · " + VK.num(pecasProntas) + " prontas" : "") +
         (pecasQuebra ? " · " + VK.num(pecasQuebra) + " quebra" : ""),
-        "#f59e0b") +
-      kpi("Progresso", pct + "%", prontos.length + " de " + lista.length + " concluídos", "#10b981");
+        "#d97706") +
+      kpi("Progresso", pct + "%", prontos.length + " de " + lista.length + " concluídos", "#059669");
 
     VK.$("#kpis").innerHTML = html;
   }

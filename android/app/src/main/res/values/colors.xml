@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="vk_surface">#0A1020</color>
-    <color name="vk_surface_2">#111A2E</color>
+    <color name="vk_surface">#F5F7FB</color>
+    <color name="vk_surface_2">#FFFFFF</color>
     <color name="vk_primary">#4F46E5</color>
-    <color name="vk_accent">#22D3EE</color>
+    <color name="vk_accent">#7C3AED</color>
     <color name="vk_icon_bg">#4F46E5</color>
+    <color name="vk_splash">#4F46E5</color>
 </resources>

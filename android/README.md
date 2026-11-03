@@ -53,7 +53,7 @@ java -cp "$env:TEMP\vk-ota-test" br.com.visualkanban.app.TestarOta
 
 A versão do APK vem de `../static/js/config.js` (`versao`). Não edite à mão no
 Gradle: altere o painel, faça o build e o `versionCode` será
-`major*10000 + minor*100 + patch` (ex.: `1.2.9` → `10209`).
+`major*10000 + minor*100 + patch` (ex.: `1.3.0` → `10300`).
 
 ## Gerar o APK (script)
 

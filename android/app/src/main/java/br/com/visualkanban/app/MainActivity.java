@@ -70,10 +70,10 @@ public class MainActivity extends Activity {
         assetLoader = criarAssetLoader();
 
         FrameLayout raiz = new FrameLayout(this);
-        raiz.setBackgroundColor(Color.parseColor("#0a1020"));
+        raiz.setBackgroundColor(Color.parseColor("#f5f7fb"));
 
         webView = new WebView(this);
-        webView.setBackgroundColor(Color.parseColor("#0a1020"));
+        webView.setBackgroundColor(Color.parseColor("#f5f7fb"));
         raiz.addView(webView, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
