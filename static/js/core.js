@@ -188,10 +188,11 @@
     });
   };
 
+  var FMT_NUM = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 });
   VK.num = function (v) {
     var n = Number(v);
     if (!isFinite(n)) n = 0;
-    return new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(n);
+    return FMT_NUM.format(n);
   };
 
   VK.dataBR = function (iso) {

@@ -1,8 +1,8 @@
 {
-  "versao": "1.2.8",
-  "zip": "https://raw.githubusercontent.com/Mativis/visual_kanban/main/ota/www-1.2.8.zip",
-  "sha256": "465bbd13afee6457d9837890c1c10cf134c1d444b27f2e014092e3ab16af92d0",
-  "tamanho": 304047,
-  "publicado_em": "2026-11-03T12:07:24Z",
-  "notas": "Adiciona o botao Limpar alertas, com restauracao dos alertas dispensados"
+  "versao": "1.2.9",
+  "zip": "https://raw.githubusercontent.com/Mativis/visual_kanban/main/ota/www-1.2.9.zip",
+  "sha256": "56188e419a7a1c90d67111f8b812b804dd3a2c170cc1914a5b51a632d1a6a04b",
+  "tamanho": 305335,
+  "publicado_em": "2026-11-03T15:25:41Z",
+  "notas": "Painel mais leve: planilha Excel sob demanda, poll sem redesenhar o quadro e menos chamadas ao servidor"
 }

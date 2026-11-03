@@ -411,10 +411,13 @@
     VK.atualizarBadges();
     verificarServidor();
 
+    // Alertas/chat mudam devagar: consulta os badges com menos frequência que
+    // o quadro, para poupar chamadas ao Apps Script.
+    var badgePollMs = Math.max(VK.config.pollMs * 3, 60000);
     setInterval(function () {
       if (document.visibilityState !== "visible") return;
       VK.atualizarBadges();
-    }, VK.config.pollMs);
+    }, badgePollMs);
 
     setInterval(function () {
       if (document.visibilityState !== "visible") return;

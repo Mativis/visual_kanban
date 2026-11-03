@@ -14,6 +14,10 @@
     { id: "Entregue", rotulo: "Entregue", cor: "#64748b" },
   ];
 
+  // No celular o quadro começa com menos cartões para pintar mais rápido.
+  var MOBILE = !!(window.matchMedia && window.matchMedia("(max-width: 720px)").matches);
+  var LIMITE_CARTOES = MOBILE ? 30 : 50;
+
   var TRANSICOES = {
     "Pendente": ["Em andamento"],
     "Em andamento": ["Pendente", "Pronto"],
@@ -89,6 +93,20 @@
       : "Aguardando envio do Visualfil";
   }
 
+  var ultimaAssinatura = null;
+
+  // Assinatura barata do quadro: evita recriar todo o DOM quando o polling
+  // devolve exatamente os mesmos pedidos.
+  function assinaturaQuadro(lista, ultimoEnvio) {
+    var partes = [String(ultimoEnvio || ""), String(lista.length)];
+    for (var i = 0; i < lista.length; i++) {
+      var p = lista[i];
+      partes.push(p.chave, p.status, p.saldo, p.qtd_pronta, p.qtd_quebra,
+        p.dt_entrega, p.prioridade, p.status_por, p.status_em);
+    }
+    return partes.join("\u0001");
+  }
+
   function carregar(mostrarErro, forcar) {
     if (VK.state.carregando) {
       if (!forcar) return VK.state.carregando;
@@ -96,32 +114,39 @@
       return VK.state.carregando.then(function () { return carregar(mostrarErro, false); });
     }
 
-    var p = Promise.resolve();
+    var payload = {};
+    if (VK.ehAnalista() && VK.state.filtros.confeccao) {
+      payload.codigo_confeccao = VK.state.filtros.confeccao;
+    }
 
-    if (VK.ehAnalista() && !VK.state.resumo.length) {
-      p = p.then(function () { return VK.call("resumo"); })
-        .then(function (r) {
+    // Resumo e pedidos não dependem um do outro: dispara os dois juntos.
+    var pedidoResumo = VK.ehAnalista() && !VK.state.resumo.length
+      ? VK.call("resumo").then(function (r) {
           VK.state.resumo = r.confeccoes || [];
           if (r.ultimo_envio) VK.state.ultimoEnvio = r.ultimo_envio;
           preencherConfeccoes();
-        });
-    }
+          return r;
+        }).catch(function () { return null; })
+      : Promise.resolve(null);
 
-    p = p.then(function () {
-      var payload = {};
-      if (VK.ehAnalista() && VK.state.filtros.confeccao) {
-        payload.codigo_confeccao = VK.state.filtros.confeccao;
-      }
-      return VK.call("listarpedidos", payload);
-    }).then(function (r) {
-      VK.state.pedidos = r.pedidos || [];
-      if (r.ultimo_envio) VK.state.ultimoEnvio = r.ultimo_envio;
-      sincronizado();
-      render();
-    }).catch(function (e) {
-      if (mostrarErro !== false) VK.toast(e.message, "error");
-      render();
-    });
+    var pedidoQuadro = VK.call("listarpedidos", payload);
+
+    var p = Promise.all([pedidoResumo, pedidoQuadro])
+      .then(function (resultados) {
+        var r = resultados[1];
+        VK.state.pedidos = r.pedidos || [];
+        if (r.ultimo_envio) VK.state.ultimoEnvio = r.ultimo_envio;
+        sincronizado();
+
+        var assinatura = assinaturaQuadro(VK.state.pedidos, VK.state.ultimoEnvio);
+        if (assinatura !== ultimaAssinatura) {
+          ultimaAssinatura = assinatura;
+          render();
+        }
+      }).catch(function (e) {
+        if (mostrarErro !== false) VK.toast(e.message, "error");
+        render();
+      });
 
     var limpar = function () { VK.state.carregando = null; };
     VK.state.carregando = p.then(limpar, limpar);
@@ -224,7 +249,29 @@
     VK.$("#kpis").innerHTML = html;
   }
 
+  var cacheCards = Object.create(null);
+  var cacheCardsTotal = 0;
+
+  function chaveCard(p) {
+    return [p.chave, p.pedido, p.cod_confec, p.produto, p.confeccao, p.marca,
+      p.saldo, p.qtd_pronta, p.qtd_quebra, p.qe, p.dt_entrega, p.dias,
+      p.prioridade, p.status, p.status_por, p.status_em,
+      VK.ehAnalista() ? "A" : "C"].join("\u0001");
+  }
+
   function cardHtml(p) {
+    var chave = chaveCard(p);
+    var html = cacheCards[chave];
+    if (html === undefined) {
+      html = montarCardHtml(p);
+      if (cacheCardsTotal > 4000) { cacheCards = Object.create(null); cacheCardsTotal = 0; }
+      cacheCards[chave] = html;
+      cacheCardsTotal++;
+    }
+    return html;
+  }
+
+  function montarCardHtml(p) {
     var alvos = movimentos(p);
     var saldo = Math.max(0, Number(p.saldo) || 0);
     var quebra = Math.min(Math.max(0, Number(p.qtd_quebra) || 0), saldo);
@@ -273,10 +320,15 @@
   }
 
   function render() {
-    var lista = filtrados();
-    renderKpis(lista, filtrados(true));
-
+    // Uma única passada de filtro/ordenação; a lista visível é derivada dela.
+    var todos = filtrados(true);
     var ocultar = VK.state.filtros.ocultarEntregues;
+    var lista = ocultar
+      ? todos.filter(function (p) { return p.status !== "Entregue"; })
+      : todos;
+
+    renderKpis(lista, todos);
+
     var board = VK.$("#board");
     board.classList.toggle("oculto-entregue", ocultar);
 
@@ -286,14 +338,14 @@
       var itens = lista.filter(function (p) { return p.status === col.id; });
       var pecas = itens.reduce(function (s, p) { return s + (Number(p.saldo) || 0); }, 0);
       var quebraCol = itens.reduce(function (s, p) { return s + (Number(p.qtd_quebra) || 0); }, 0);
-      var limite = VK.state.mostrar[col.id] || 50;
+      var limite = VK.state.mostrar[col.id] || LIMITE_CARTOES;
       var visiveis = itens.slice(0, limite);
 
       var corpo = itens.length
         ? visiveis.map(cardHtml).join("") +
           (itens.length > visiveis.length
             ? '<button class="carregar-mais" type="button" data-mais="' + col.id + '">Mostrar mais ' +
-              Math.min(50, itens.length - visiveis.length) + " pedidos…</button>"
+              Math.min(LIMITE_CARTOES, itens.length - visiveis.length) + " pedidos…</button>"
             : "")
         : '<div class="col-vazio">Nenhum pedido</div>';
 
@@ -1021,7 +1073,6 @@
     }
 
     var botao = VK.$("#btn-exportar");
-    if (botao && botao.disabled) return;
     if (botao) {
       botao.disabled = true;
       botao.textContent = "Gerando…";
@@ -1056,10 +1107,54 @@
     });
   }
 
+  var carregandoExcel = null;
+  var EXCEL_SRC = "js/vendor/exceljs.min.js?v=" +
+    String((window.VK_CONFIG || {}).versao || "");
+
+  // O ExcelJS tem quase 1 MB. Só baixa quando o usuário exporta de verdade.
+  function carregarExcel() {
+    if (window.ExcelJS) return Promise.resolve(window.ExcelJS);
+    if (carregandoExcel) return carregandoExcel;
+
+    carregandoExcel = new Promise(function (resolve, reject) {
+      var s = document.createElement("script");
+      s.src = EXCEL_SRC;
+      s.async = true;
+      s.onload = function () {
+        if (window.ExcelJS) resolve(window.ExcelJS);
+        else { carregandoExcel = null; reject(new Error("Biblioteca de Excel indisponível.")); }
+      };
+      s.onerror = function () {
+        carregandoExcel = null;
+        reject(new Error("Não foi possível baixar a biblioteca de Excel. Verifique a conexão."));
+      };
+      document.head.appendChild(s);
+    });
+    return carregandoExcel;
+  }
+
   function exportarExcel() {
     var lista = filtrados();
     if (!lista.length) { VK.toast("Nada para exportar com os filtros atuais.", "warn"); return; }
-    baixarExcel(lista);
+
+    var botao = VK.$("#btn-exportar");
+    if (botao && botao.disabled) return;
+
+    if (window.ExcelJS) { baixarExcel(lista); return; }
+
+    if (botao) {
+      botao.disabled = true;
+      botao.textContent = "Carregando…";
+    }
+    carregarExcel().then(function () {
+      baixarExcel(lista);
+    }).catch(function (erro) {
+      if (botao) {
+        botao.disabled = false;
+        botao.textContent = "⤓ Excel";
+      }
+      VK.toast(erro.message, "error");
+    });
   }
 
   function exportarCSV() {
@@ -1170,7 +1265,7 @@
 
   VK.on(board, "click", "[data-mais]", function (ev, el) {
     var status = el.getAttribute("data-mais");
-    VK.state.mostrar[status] = (VK.state.mostrar[status] || 50) + 50;
+    VK.state.mostrar[status] = (VK.state.mostrar[status] || LIMITE_CARTOES) + LIMITE_CARTOES;
     render();
   });
 
@@ -1180,10 +1275,16 @@
   });
 
   // Filtros
+  var timerBusca = null;
   VK.$("#f-busca").addEventListener("input", function (ev) {
-    VK.state.filtros.busca = ev.target.value.trim();
-    VK.state.mostrar = {};
-    render();
+    var valor = ev.target.value.trim();
+    // Espera o usuário parar de digitar antes de reordenar/filtrar o quadro.
+    clearTimeout(timerBusca);
+    timerBusca = setTimeout(function () {
+      VK.state.filtros.busca = valor;
+      VK.state.mostrar = {};
+      render();
+    }, 180);
   });
 
   VK.$("#f-prioridade").addEventListener("change", function (ev) {

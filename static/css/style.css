@@ -682,6 +682,9 @@ dialog[open] { animation: subir .16s ease-out; }
     flex-wrap: wrap; align-items: stretch; gap: 0 10px;
     height: auto; min-height: calc(var(--topbar-h) + var(--safe-top));
     padding: var(--safe-top) max(12px, var(--safe-right)) 0 max(12px, var(--safe-left));
+    /* O fundo já é quase opaco: o blur só custa GPU no celular. */
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
   .brand { flex: 1 1 auto; min-width: 0; height: var(--topbar-h); }
   .brand strong {
