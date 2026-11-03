@@ -73,6 +73,13 @@ visual_kanban/
 | **Administração** | Cria/edita/desativa usuários, redefine senhas, edita nomes/aliases das confecções e copia o **código de vínculo**. |
 | **Sessão** | Token de 12 h com renovação deslizante; senhas com SHA-256 + salt por usuário. |
 
+### Desempenho
+
+* A biblioteca de Excel (quase 1 MB) só é baixada quando o usuário exporta.
+* O polling não redesenha o quadro quando os pedidos não mudaram.
+* Resumo e pedidos carregam em paralelo na abertura; a busca espera o usuário parar de digitar.
+* No celular, o quadro começa com 30 cartões por coluna e o cabeçalho não usa blur.
+
 ---
 
 ## App Android (APK)
