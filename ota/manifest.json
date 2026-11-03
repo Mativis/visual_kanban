@@ -1,8 +1,8 @@
 {
-  "versao": "1.2.7",
-  "zip": "https://raw.githubusercontent.com/Mativis/visual_kanban/main/ota/www-1.2.7.zip",
-  "sha256": "b0322352a796f3312bafcbc558b5a74c8bb5231ea39a7087a4a5c238233cd60e",
-  "tamanho": 302985,
-  "publicado_em": "2026-10-31T16:53:27Z",
-  "notas": "Primeira versão com atualizações OTA pelo próprio app"
+  "versao": "1.2.8",
+  "zip": "https://raw.githubusercontent.com/Mativis/visual_kanban/main/ota/www-1.2.8.zip",
+  "sha256": "465bbd13afee6457d9837890c1c10cf134c1d444b27f2e014092e3ab16af92d0",
+  "tamanho": 304047,
+  "publicado_em": "2026-11-03T12:07:24Z",
+  "notas": "Adiciona o botao Limpar alertas, com restauracao dos alertas dispensados"
 }

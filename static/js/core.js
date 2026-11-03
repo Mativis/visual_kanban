@@ -34,6 +34,8 @@
     resumo: [],
     confeccoes: [],
     alertas: [],
+    alertasTodos: [],
+    alertasLimpos: 0,
     naoLidas: 0,
     naoLidasPor: {},
     ultimoEnvio: "",

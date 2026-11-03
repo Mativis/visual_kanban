@@ -68,7 +68,7 @@ visual_kanban/
 | **Kanban** | Colunas *A produzir → Em produção → Pronto → Entregue*, com filtros por confecção, prioridade, busca, “só atrasados”, “somente Q.E” e ordenação. Drag & drop e botões. Exporta **Excel (.xlsx)** com resumo visual e o quadro detalhado, além de CSV. |
 | **Confecção** | Vê **somente a sua demanda**. Pode sinalizar *Em produção*, registrar **pronto parcial** e **quebra de tecido** (peças que não virão) e marcar *Pronto* (e voltar atrás). O pedido fecha quando **prontas + quebra** alcançam o saldo. Não consegue marcar *Entregue* nem reabrir um pedido já entregue — isso é feito pelo analista. |
 | **Analista** | Vê todas as confecções, move qualquer pedido, confirma entrega, exporta Excel/CSV e administra usuários/confecções. O total de **quebra de tecido** aparece no resumo do quadro e na tabela de confecções. |
-| **Alertas** | Derivados do quadro (sem tabela extra): atrasos, entregas em até 3 dias, prioridade alta parada e pedidos sem confecção. |
+| **Alertas** | Derivados do quadro (sem tabela extra): atrasos, entregas em até 3 dias, prioridade alta parada e pedidos sem confecção. **Limpar alertas** dispensa os alertas atuais; eles voltam se o pedido mudar. |
 | **Chat** | Conversa direta entre analista e confecção, com contador de não lidas e marcação automática de leitura. |
 | **Administração** | Cria/edita/desativa usuários, redefine senhas, edita nomes/aliases das confecções e copia o **código de vínculo**. |
 | **Sessão** | Token de 12 h com renovação deslizante; senhas com SHA-256 + salt por usuário. |
@@ -87,7 +87,8 @@ O mesmo painel também roda como app Android, sem duplicar código: o projeto
   APK. Ele consulta `ota/manifest.json`, confere o **SHA-256** do pacote e aplica
   a nova versão; se algo falhar, continua usando o painel embutido. A verificação
   acontece ao abrir e no máximo a cada 6 h, e também pelo menu do usuário →
-  **Verificar atualizações**.
+  **Verificar atualizações**. O APK publicado já inclui esse suporte e aplica a
+  atualização ao abrir, sem reinstalação.
 * No app, **Excel** e **CSV** são gravados em `Downloads/Visual Kanban/` em vez de
   passar pelo download do navegador. No Android 10+ não é preciso permissão; no
   Android 7–9 o app pede acesso ao armazenamento na primeira exportação.

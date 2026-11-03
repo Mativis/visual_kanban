@@ -107,16 +107,76 @@
 
   /* ---------------- Alertas / badges ---------------- */
 
+  var LS_ALERTAS_LIMPOS = "vk_alertas_limpos";
+
+  function usuarioAlerta() {
+    var s = VK.session() || {};
+    return String(s.user || s.nome || "anon");
+  }
+
+  /**
+   * Identifica o alerta pela situação que o gerou. Se o pedido mudar de
+   * status, prazo ou confecção, a chave muda e o alerta volta a aparecer.
+   */
+  function chaveDispensa(a) {
+    return [
+      a.chave,
+      a.tipo,
+      a.dt_entrega || "",
+      a.status || "",
+      a.codigo_confeccao || "",
+    ].join("|");
+  }
+
+  function lerAlertasLimpos() {
+    try {
+      var tudo = JSON.parse(localStorage.getItem(LS_ALERTAS_LIMPOS) || "{}");
+      var lista = tudo && tudo[usuarioAlerta()];
+      return Array.isArray(lista) ? lista : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function gravarAlertasLimpos(lista) {
+    try {
+      var tudo;
+      try { tudo = JSON.parse(localStorage.getItem(LS_ALERTAS_LIMPOS) || "{}"); }
+      catch (e) { tudo = {}; }
+      if (!tudo || typeof tudo !== "object") tudo = {};
+      var usuario = usuarioAlerta();
+      if (lista && lista.length) tudo[usuario] = lista;
+      else delete tudo[usuario];
+      localStorage.setItem(LS_ALERTAS_LIMPOS, JSON.stringify(tudo));
+    } catch (e) {
+      // armazenamento indisponível: a limpeza vale só para esta sessão
+    }
+  }
+
   VK.atualizarBadges = function () {
     return VK.call("notificacoes")
       .then(function (r) {
-        VK.state.alertas = r.alertas || [];
+        var todos = r.alertas || [];
+        var limpos = lerAlertasLimpos();
+
+        // Descarta chaves de alertas que já saíram do quadro, para que uma
+        // ocorrência futura da mesma situação volte a ser exibida.
+        var atuais = {};
+        todos.forEach(function (a) { atuais[chaveDispensa(a)] = true; });
+        var mantidos = limpos.filter(function (k) { return atuais[k]; });
+        if (mantidos.length !== limpos.length) gravarAlertasLimpos(mantidos);
+
+        VK.state.alertasTodos = todos;
+        VK.state.alertas = todos.filter(function (a) {
+          return mantidos.indexOf(chaveDispensa(a)) < 0;
+        });
+        VK.state.alertasLimpos = todos.length - VK.state.alertas.length;
         VK.state.naoLidas = r.nao_lidas || 0;
         VK.state.naoLidasPor = r.nao_lidas_por || VK.state.naoLidasPor;
         if (r.ultimo_envio) VK.state.ultimoEnvio = r.ultimo_envio;
 
         VK.setBadge("badge-chat", VK.state.naoLidas);
-        VK.setBadge("badge-alertas", r.total || 0);
+        VK.setBadge("badge-alertas", VK.state.alertas.length);
         atualizarSync();
 
         if (VK.state.tab === "alertas") VK.alertas.render();
@@ -148,6 +208,11 @@
     if (chave && VK.kanban && VK.kanban.abrirPedido) VK.kanban.abrirPedido(chave);
   });
 
+  VK.on(VK.$("#alerts-list"), "click", ".btn-restaurar-alertas", function (ev) {
+    ev.stopPropagation();
+    VK.alertas.restaurar();
+  });
+
   VK.alertas = {
     render: function () {
       var box = VK.$("#alerts-list");
@@ -155,8 +220,18 @@
       var lista = VK.state.alertas || [];
 
       if (!lista.length) {
+        var limpos = VK.state.alertasLimpos || 0;
+        var textoLimpos = limpos === 1
+          ? "1 alerta limpo"
+          : limpos + " alertas limpos";
         box.innerHTML = '<div class="vazio"><span class="big">✓</span>' +
-          "Nenhum alerta no momento. Tudo em dia com os prazos!</div>";
+          "Nenhum alerta no momento. Tudo em dia com os prazos!" +
+          (limpos
+            ? '<div class="vazio-acao"><button type="button" ' +
+              'class="btn ghost sm btn-restaurar-alertas">Mostrar ' + textoLimpos +
+              "</button></div>"
+            : "") +
+          "</div>";
         return;
       }
 
@@ -177,6 +252,37 @@
     abrir: function () {
       VK.alertas.render();
       VK.atualizarBadges();
+    },
+
+    limpar: function () {
+      var visiveis = VK.state.alertas || [];
+      if (!visiveis.length) {
+        VK.toast("Nenhum alerta para limpar.", "info", 1800);
+        return;
+      }
+
+      var mapa = {};
+      lerAlertasLimpos().forEach(function (k) { mapa[k] = true; });
+      visiveis.forEach(function (a) { mapa[chaveDispensa(a)] = true; });
+      gravarAlertasLimpos(Object.keys(mapa));
+
+      VK.state.alertas = [];
+      VK.state.alertasLimpos = (VK.state.alertasTodos || []).length;
+      VK.setBadge("badge-alertas", 0);
+      VK.alertas.render();
+
+      VK.toast(visiveis.length === 1
+        ? "1 alerta limpo. Ele volta se a situação mudar."
+        : visiveis.length + " alertas limpos. Eles voltam se a situação mudar.", "ok");
+    },
+
+    restaurar: function () {
+      gravarAlertasLimpos([]);
+      VK.state.alertas = (VK.state.alertasTodos || []).slice();
+      VK.state.alertasLimpos = 0;
+      VK.setBadge("badge-alertas", VK.state.alertas.length);
+      VK.alertas.render();
+      VK.toast("Alertas restaurados.", "ok", 1800);
     },
   };
 
@@ -275,6 +381,9 @@
     });
 
     // Atualizar alertas
+    VK.$("#btn-alertas-limpar").addEventListener("click", function () {
+      VK.alertas.limpar();
+    });
     VK.$("#btn-alertas-atualizar").addEventListener("click", function () {
       VK.atualizarBadges();
       VK.toast("Alertas atualizados.", "info", 1800);

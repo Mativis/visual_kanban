@@ -292,6 +292,7 @@ a { color: var(--info); text-decoration: none; }
 .section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; }
 .section-head h2 { font-size: 18px; }
 .section-head p { color: var(--muted); font-size: 12.5px; margin-top: 3px; }
+.section-head .acoes { display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* ---------- KPIs ---------- */
 
@@ -454,6 +455,7 @@ a { color: var(--info); text-decoration: none; }
 .alerta.sev-1 { --sev: var(--info); --sev-bg: rgba(56, 189, 248, .12); }
 .vazio { text-align: center; color: var(--muted-2); padding: 40px 16px; border: 1px dashed var(--border); border-radius: var(--radius); }
 .vazio .big { font-size: 28px; display: block; margin-bottom: 8px; opacity: .8; }
+.vazio-acao { margin-top: 14px; }
 
 /* ---------- Chat ---------- */
 
@@ -744,6 +746,7 @@ dialog[open] { animation: subir .16s ease-out; }
   .btn.sm { min-height: 38px; height: 38px; }
 
   .section-head { flex-direction: column; align-items: stretch; gap: 10px; }
+  .section-head .acoes { flex-direction: column; }
   .section-head .btn { width: 100%; }
 
   .board { gap: 10px; }
