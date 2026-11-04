@@ -107,6 +107,64 @@
     return partes.join("\u0001");
   }
 
+  /** Escopo do quadro, igual ao usado pelo servidor na chave de cache. */
+  function escopoCache() {
+    if (!VK.ehAnalista()) {
+      return (VK.session() || {}).codigo_confeccao || "SEM-CONFECCAO";
+    }
+    return VK.state.filtros.confeccao || "ALL";
+  }
+
+  /**
+   * Stale-while-revalidate: pinta na hora o último quadro salvo no aparelho e
+   * deixa a revalidação em segundo plano. O cache já é separado por usuário e
+   * versão (ver VK.cacheLocal); aqui só garantimos que seja do mesmo filtro.
+   */
+  function hidratar() {
+    var pedidosHidratados = false;
+
+    if (!VK.state.pedidos.length) {
+      var cp = VK.cacheLocal.ler("pedidos", escopoCache());
+      if (cp && cp.valor && Array.isArray(cp.valor.pedidos)) {
+        VK.state.pedidos = cp.valor.pedidos;
+        VK.state.versaoDados = cp.versao || VK.state.versaoDados;
+        VK.state.versaoEscopo = escopoCache();
+        if (cp.valor.ultimoEnvio) VK.state.ultimoEnvio = cp.valor.ultimoEnvio;
+        pedidosHidratados = true;
+      }
+    }
+
+    if (VK.ehAnalista() && !VK.state.resumo.length) {
+      var cr = VK.cacheLocal.ler("resumo", "ALL");
+      if (cr && cr.valor && Array.isArray(cr.valor.confeccoes)) {
+        VK.state.resumo = cr.valor.confeccoes;
+        if (cr.valor.ultimoEnvio) VK.state.ultimoEnvio = cr.valor.ultimoEnvio;
+      }
+    }
+
+    if (VK.state.resumo.length) preencherConfeccoes();
+
+    // Nada veio do cache: mantém a tela como está e deixa o carregar decidir
+    // se precisa redesenhar. Evita perder a rolagem ao voltar para a aba.
+    if (!pedidosHidratados) return;
+
+    sincronizado();
+    // A assinatura evita redesenhar quando a revalidação devolve o mesmo quadro.
+    ultimaAssinatura = assinaturaQuadro(VK.state.pedidos, VK.state.ultimoEnvio);
+    render();
+  }
+
+  function guardarQuadro(r, escopo) {
+    VK.state.pedidos = r.pedidos || [];
+    VK.state.versaoDados = r.versao_dados || VK.state.versaoDados;
+    VK.state.versaoEscopo = escopo;
+    if (r.ultimo_envio) VK.state.ultimoEnvio = r.ultimo_envio;
+    VK.cacheLocal.gravar("pedidos", escopo, {
+      pedidos: VK.state.pedidos,
+      ultimoEnvio: VK.state.ultimoEnvio,
+    }, VK.state.versaoDados);
+  }
+
   function carregar(mostrarErro, forcar) {
     if (VK.state.carregando) {
       if (!forcar) return VK.state.carregando;
@@ -114,28 +172,46 @@
       return VK.state.carregando.then(function () { return carregar(mostrarErro, false); });
     }
 
+    var escopo = escopoCache();
     var payload = {};
     if (VK.ehAnalista() && VK.state.filtros.confeccao) {
       payload.codigo_confeccao = VK.state.filtros.confeccao;
     }
+    // Só manda a versão se os pedidos atuais forem do mesmo filtro: trocar de
+    // confecção precisa de lista nova, não de um "sem_alteracao".
+    if (VK.state.versaoDados && VK.state.versaoEscopo === escopo) {
+      payload.versao_dados = VK.state.versaoDados;
+    }
 
-    // Resumo e pedidos não dependem um do outro: dispara os dois juntos.
+    // O resumo (lista de confecções) só é buscado quando ainda não existe.
+    // Ele muda raramente; VK.recarregarTudo limpa e força nova busca.
+    // Sem versão: com "sem_alteracao" a lista de confecções continuaria vazia.
     var pedidoResumo = VK.ehAnalista() && !VK.state.resumo.length
-      ? VK.call("resumo").then(function (r) {
-          VK.state.resumo = r.confeccoes || [];
-          if (r.ultimo_envio) VK.state.ultimoEnvio = r.ultimo_envio;
-          preencherConfeccoes();
-          return r;
-        }).catch(function () { return null; })
+      ? VK.call("resumo")
+          .then(function (r) {
+            VK.state.resumo = r.confeccoes || [];
+            if (r.ultimo_envio) VK.state.ultimoEnvio = r.ultimo_envio;
+            VK.cacheLocal.gravar("resumo", "ALL", {
+              confeccoes: VK.state.resumo,
+              ultimoEnvio: VK.state.ultimoEnvio,
+            }, VK.state.versaoDados);
+            preencherConfeccoes();
+            return r;
+          }).catch(function () { return null; })
       : Promise.resolve(null);
 
     var pedidoQuadro = VK.call("listarpedidos", payload);
 
     var p = Promise.all([pedidoResumo, pedidoQuadro])
       .then(function (resultados) {
-        var r = resultados[1];
-        VK.state.pedidos = r.pedidos || [];
-        if (r.ultimo_envio) VK.state.ultimoEnvio = r.ultimo_envio;
+        var r = resultados[1] || {};
+
+        if (r.sem_alteracao) {
+          if (r.versao_dados) VK.state.versaoDados = r.versao_dados;
+          return;
+        }
+
+        guardarQuadro(r, escopo);
         sincronizado();
 
         var assinatura = assinaturaQuadro(VK.state.pedidos, VK.state.ultimoEnvio);
@@ -1186,6 +1262,7 @@
 
   VK.kanban = {
     abrir: function () {
+      hidratar();
       carregar(true);
     },
     carregar: carregar,

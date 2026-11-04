@@ -12,8 +12,13 @@ window.VK_CONFIG = {
   // Intervalos de atualização automática (ms)
   pollMs: 20000,
   chatPollMs: 8000,
+  // Com a aba do navegador em segundo plano o chat quase não muda: desacelera.
+  chatPollOciosoMs: 60000,
+  // Sincronização incremental do chat (1 chamada em vez de 3).
+  // false força o caminho antigo, útil para voltar atrás sem republicar.
+  chatSync: true,
 
   // Nome exibido
   appNome: "Visual Kanban",
-  versao: "1.3.0",
+  versao: "1.4.0",
 };

@@ -1,8 +1,8 @@
 {
-  "versao": "1.3.0",
-  "zip": "https://raw.githubusercontent.com/Mativis/visual_kanban/main/ota/www-1.3.0.zip",
-  "sha256": "2176b91c9be305e515db18e820113c73431117e7627ed743c761e5d1869afff4",
-  "tamanho": 306037,
-  "publicado_em": "2026-11-03T20:51:19Z",
-  "notas": "Novo layout claro, leve e moderno: superfícies suaves, tipografia mais legível e melhor uso do espaço em celular e desktop"
+  "versao": "1.4.0",
+  "zip": "https://raw.githubusercontent.com/Mativis/visual_kanban/main/ota/www-1.4.0.zip",
+  "sha256": "315654be6ea538da123b39fbf3bec29bcb571b5f304da93455394e04b08158ac",
+  "tamanho": 309229,
+  "publicado_em": "2026-11-04T13:06:31Z",
+  "notas": "Chat sincroniza em uma chamada so, menos leituras na planilha e o quadro abre na hora com os ultimos dados salvos"
 }

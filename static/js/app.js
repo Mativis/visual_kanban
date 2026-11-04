@@ -315,8 +315,11 @@
     VK.state.resumo = [];
     VK.state.pedidos = [];
     VK.state.thread = "";
+    VK.state.versaoDados = "";
+    VK.state.versaoEscopo = "";
+    if (VK.cacheLocal) VK.cacheLocal.limpar();
     VK.atualizarBadges();
-    if (VK.state.tab === "kanban") VK.kanban.carregar(false);
+    if (VK.state.tab === "kanban") VK.kanban.carregar(false, true);
     if (VK.state.tab === "admin") VK.admin.abrir();
   };
 

@@ -9,6 +9,16 @@
 
   var ocupado = false;
   var iniciado = false;
+
+  // Cursor da conversa: em qual linha da aba Chat o cliente parou.
+  var estado = {
+    codigo: "",
+    cursor: 0,
+    total: 0,
+    ids: {},
+    modo: VK.config.chatSync === false ? "antigo" : "sync",
+    pendente: false,
+  };
   function codigoAtual() {
     if (!VK.ehAnalista()) {
       return (VK.session() || {}).codigo_confeccao || "";
@@ -127,67 +137,169 @@
     }
   }
 
-  function renderMensagens(msgs) {
+  function htmlMensagem(m, meu, diaAnterior) {
+    var html = "";
+    var dia = diaLocal(m.data);
+    if (dia !== diaAnterior) {
+      html += '<div class="dia-sep">' + VK.esc(rotuloDia(m.data)) + "</div>";
+    }
+    var minha = m.de === meu;
+    html += '<div class="msg ' + (minha ? "mine" : "theirs") + '">' +
+      '<div class="balao">' + VK.esc(m.mensagem) + "</div>" +
+      '<div class="meta">' +
+      (minha ? "Você" : VK.esc(m.de_nome || m.de)) + " · " + hora(m.data) +
+      "</div></div>";
+    return { html: html, dia: dia };
+  }
+
+  /**
+   * `anexar = true` só insere as mensagens novas no fim. Recriar o innerHTML a
+   * cada poll de 8s perdia seleção de texto e forçava o navegador a refazer
+   * layout de toda a conversa.
+   */
+  function renderMensagens(msgs, anexar) {
     var box = VK.$("#messages");
     var perto = box.scrollHeight - box.scrollTop - box.clientHeight < 140;
     var meu = (VK.session() || {}).user;
 
-    if (!msgs.length) {
+    if (!msgs.length && !anexar) {
       box.innerHTML = '<div class="vazio" style="border:none;margin:auto;font-size:12.5px">' +
         "Nenhuma mensagem ainda.<br>Use o campo abaixo para iniciar a conversa.</div>";
       box.dataset.iniciado = "1";
+      box.dataset.dia = "";
       return;
     }
 
+    var diaAnterior = anexar ? (box.dataset.dia || "") : "";
     var html = "";
-    var diaAnterior = "";
 
     msgs.forEach(function (m) {
-      var dia = diaLocal(m.data);
-      if (dia !== diaAnterior) {
-        html += '<div class="dia-sep">' + VK.esc(rotuloDia(m.data)) + "</div>";
-        diaAnterior = dia;
-      }
-      var minha = m.de === meu;
-      html += '<div class="msg ' + (minha ? "mine" : "theirs") + '">' +
-        '<div class="balao">' + VK.esc(m.mensagem) + "</div>" +
-        '<div class="meta">' +
-        (minha ? "Você" : VK.esc(m.de_nome || m.de)) + " · " + hora(m.data) +
-        "</div></div>";
+      var r = htmlMensagem(m, meu, diaAnterior);
+      html += r.html;
+      diaAnterior = r.dia;
     });
 
-    box.innerHTML = html;
+    if (anexar) {
+      var vazio = box.querySelector(".vazio");
+      if (vazio) box.removeChild(vazio);
+      box.insertAdjacentHTML("beforeend", html);
+    } else {
+      box.innerHTML = html;
+    }
+    box.dataset.dia = diaAnterior;
 
-    if (perto || box.dataset.iniciado !== "1") {
+    msgs.forEach(function (m) { if (m.id) estado.ids[m.id] = true; });
+
+    if (perto || anexar || box.dataset.iniciado !== "1") {
       box.scrollTop = box.scrollHeight;
       box.dataset.iniciado = "1";
     }
   }
 
-  function carregarMensagens(silencioso) {
-    var codigo = codigoAtual();
-    if (!codigo) { renderMensagens([]); return Promise.resolve(); }
-    if (ocupado) return Promise.resolve();
-    ocupado = true;
+  function aplicarNaoLidas(r) {
+    if (r.nao_lidas === undefined) return;
+    VK.state.naoLidas = Number(r.nao_lidas) || 0;
+    if (r.nao_lidas_por) VK.state.naoLidasPor = r.nao_lidas_por;
+    VK.setBadge("badge-chat", VK.state.naoLidas);
+    if (VK.state.tab === "chat") renderThreads();
+  }
 
+  /* Caminho antigo (3 chamadas). Só é usado se o servidor não conhecer a
+     sincronização incremental ou se config.chatSync = false. */
+  function carregarAntigo(silencioso) {
+    var codigo = codigoAtual();
     return VK.call("listarmensagens", { codigo_confeccao: codigo })
       .then(function (r) {
         if (codigo !== codigoAtual()) return null;
         renderMensagens(r.mensagens || []);
         return VK.call("marcarlidas", { codigo_confeccao: codigo });
       })
-      .then(function () {
-        VK.atualizarBadges();
-      })
+      .then(function () { VK.atualizarBadges(); })
       .catch(function (e) {
         if (!silencioso) VK.toast(e.message, "error");
+      });
+  }
+
+  /* 1 chamada: delta de mensagens + badge + marcação de leitura. */
+  function carregarSync(silencioso, restantes) {
+    if (restantes === undefined) restantes = 5;
+    var codigo = codigoAtual();
+    var inicial = estado.codigo !== codigo || !estado.cursor;
+
+    return VK.call("sincronizarchat", {
+      codigo_confeccao: codigo,
+      desde_linha: inicial ? 0 : estado.cursor,
+      total_linhas: inicial ? 0 : estado.total,
+      marcar_lidas: document.visibilityState === "visible",
+      limite: 100,
+    })
+      .then(function (r) {
+        if (codigo !== codigoAtual()) return null;
+
+        estado.codigo = codigo;
+        estado.cursor = (r.cursor && r.cursor.ultima_linha) || 0;
+        estado.total = (r.cursor && r.cursor.total_linhas) || 0;
+
+        var msgs = r.mensagens || [];
+
+        if (r.modo === "completo") {
+          estado.ids = {};
+          renderMensagens(msgs, false);
+        } else {
+          var novas = msgs.filter(function (m) {
+            return !(m.id && estado.ids[m.id]);
+          });
+          if (novas.length) renderMensagens(novas, true);
+        }
+
+        aplicarNaoLidas(r);
+
+        // Sobrou muita linha para trás: continua agora, sem esperar o poll.
+        if (r.tem_mais && restantes > 0) return carregarSync(true, restantes - 1);
+        return null;
       })
-      .then(function () { ocupado = false; });
+      .catch(function (e) {
+        // Implantação antiga do Apps Script: a ação não existe e o servidor
+        // responde "Ação não reconhecida" (sem código). Volta para o caminho
+        // de 3 chamadas sem interromper a conversa. Erros passageiros (lock,
+        // planilha) continuam tentando o modo novo no próximo poll.
+        var semAcao = e && (e.codigo === "ACAO_DESCONHECIDA" ||
+          (e.codigo === "ERRO" && /reconhecid/i.test(String(e.message))));
+        if (semAcao) {
+          estado.modo = "antigo";
+          return carregarAntigo(silencioso);
+        }
+        if (!silencioso) VK.toast(e.message, "error");
+      });
+  }
+
+  function carregarMensagens(silencioso) {
+    var codigo = codigoAtual();
+    if (!codigo) { renderMensagens([]); return Promise.resolve(); }
+    if (ocupado) { estado.pendente = true; return Promise.resolve(); }
+    ocupado = true;
+
+    var tarefa = estado.modo === "sync"
+      ? carregarSync(silencioso)
+      : carregarAntigo(silencioso);
+
+    var concluir = function () {
+      ocupado = false;
+      if (estado.pendente) {
+        estado.pendente = false;
+        setTimeout(function () { carregarMensagens(true); }, 60);
+      }
+    };
+    return tarefa.then(concluir, concluir);
   }
 
   function selecionar(codigo) {
     if (!codigo) return;
     VK.state.thread = codigo;
+    estado.codigo = "";
+    estado.cursor = 0;
+    estado.total = 0;
+    estado.ids = {};
     renderThreads();
     atualizarCabecalho();
     VK.$("#messages").dataset.iniciado = "";
@@ -224,9 +336,9 @@
 
     VK.call("enviarmensagem", { codigo_confeccao: codigo, mensagem: texto })
       .then(function () {
-        otimista.classList.remove("pendente");
-        var meta = otimista.querySelector(".meta");
-        if (meta) meta.textContent = "Você · " + hora(new Date().toISOString());
+        // A mensagem real volta pelo sync com id do servidor; manter a bolha
+        // otimista faria ela aparecer duas vezes no modo append.
+        otimista.remove();
         box.dataset.iniciado = "1";
         box.scrollTop = box.scrollHeight;
         carregarMensagens(true);
@@ -291,6 +403,10 @@
           carregarMensagens(false);
         } else if (!codigoAtual()) {
           renderMensagens([]);
+        } else {
+          // Reabriu a aba: busca o delta sem esperar o próximo ciclo do poll.
+          carregarMensagens(true);
+          agendarPoll();
         }
       });
     },
@@ -332,10 +448,31 @@
     VK.toast("Conversa atualizada.", "info", 1500);
   });
 
-  setInterval(function () {
-    if (document.visibilityState !== "visible") return;
-    if (VK.state.tab !== "chat") return;
-    if (!codigoAtual()) return;
-    carregarMensagens(true);
-  }, VK.config.chatPollMs);
+  /* ---------------- Polling adaptativo ---------------- */
+
+  var timerPoll = null;
+
+  function pollOcioso() {
+    return document.visibilityState !== "visible" || VK.state.tab !== "chat";
+  }
+
+  function agendarPoll() {
+    if (timerPoll) clearTimeout(timerPoll);
+    var espera = pollOcioso() ? VK.config.chatPollOciosoMs : VK.config.chatPollMs;
+    timerPoll = setTimeout(function () {
+      timerPoll = null;
+      if (!pollOcioso() && codigoAtual()) carregarMensagens(true);
+      agendarPoll();
+    }, espera);
+  }
+
+  // Voltar para a aba (ou para o app) atualiza na hora; sair desacelera.
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible" && VK.state.tab === "chat" && codigoAtual()) {
+      if (iniciado) carregarMensagens(true);
+    }
+    agendarPoll();
+  });
+
+  agendarPoll();
 })();

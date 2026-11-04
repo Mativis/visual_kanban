@@ -31,7 +31,7 @@
  * ============================================================================
  */
 
-var VERSAO = "1.2.3";
+var VERSAO = "1.4.0";
 
 var ABAS = {
   PEDIDOS: "Pedidos",
@@ -64,6 +64,97 @@ var ESQUEMA = {
 var STATUS = ["Pendente", "Em andamento", "Pronto", "Entregue"];
 var SESSAO_HORAS = 12;
 var MAX_LOG = 5000;
+var CACHE_MAX_BYTES = 95000;
+
+/* ==========================================================================
+ *  NÚCLEO · CACHE E VERSÃO
+ *  --------------------------------------------------------------------------
+ *  Ler planilha é a parte cara de cada requisição. Sessão, usuários, config e
+ *  snapshots de leitura passam pelo CacheService.
+ *
+ *  A invalidação não apaga chave: a versão entra na própria chave. Quando ela
+ *  muda, a chave antiga simplesmente deixa de ser consultada e expira sozinha.
+ *
+ *    dados_versao    -> muda a cada escrita em Pedidos / Chat / Config
+ *    usuarios_versao -> muda a cada escrita em Usuarios / Sessoes
+ * ========================================================================== */
+
+var CACHE_TTL = {
+  sessao: 300,
+  usuarios: 120,
+  config: 30,
+  resumo: 15,
+  pedidos: 10,
+  notificacoes: 60,
+  naolidas: 10
+};
+
+function _cache() {
+  return CacheService.getScriptCache();
+}
+
+/** Lê do cache; se faltar, executa loader(), grava e devolve. */
+function _cacheLer(chave, ttl, loader) {
+  try {
+    var bruto = _cache().get(chave);
+    if (bruto !== null && bruto !== undefined) return JSON.parse(bruto);
+  } catch (e) { /* cache indisponível: segue para a planilha */ }
+
+  var valor = loader();
+  if (valor !== null && valor !== undefined) {
+    try {
+      var txt = JSON.stringify(valor);
+      // O CacheService recusa valores acima de 100 KB: não tente.
+      if (txt && txt.length <= CACHE_MAX_BYTES) _cache().put(chave, txt, ttl);
+    } catch (e) { /* valor grande ou cache cheio: segue sem cachear */ }
+  }
+  return valor;
+}
+
+function _cacheApagar(chaves) {
+  try { _cache().removeAll(chaves); } catch (e) {}
+}
+
+function _lerVersao(propriedade) {
+  try {
+    return PropertiesService.getScriptProperties().getProperty(propriedade) || "0";
+  } catch (e) { return "0"; }
+}
+
+function _bumpVersao(propriedade) {
+  var valor = String(new Date().getTime()) + "-" + Math.floor(Math.random() * 1000);
+  try { PropertiesService.getScriptProperties().setProperty(propriedade, valor); } catch (e) {}
+  return valor;
+}
+
+function _versaoDados() { return _lerVersao("dados_versao"); }
+function _versaoUsuarios() { return _lerVersao("usuarios_versao"); }
+function _invalidarDados() { _bumpVersao("dados_versao"); }
+function _invalidarUsuarios() { _bumpVersao("usuarios_versao"); }
+
+function _chaveSessao(token) {
+  return "s:" + VERSAO + ":" + _versaoUsuarios() + ":" + token;
+}
+
+var _lockAtivo = false;
+
+/**
+ * Serializa escritas. `_atualizarOnde` reescreve o intervalo inteiro; sem
+ * lock, dois aparelhos marcando leitura ao mesmo tempo podem se sobrescrever.
+ * Reentrante dentro da mesma execução.
+ */
+function _comLock(fn) {
+  if (_lockAtivo) return fn();
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  _lockAtivo = true;
+  try {
+    return fn();
+  } finally {
+    _lockAtivo = false;
+    lock.releaseLock();
+  }
+}
 
 /* ==========================================================================
  *  SETUP
@@ -194,6 +285,9 @@ function _executar(e, metodo) {
       case "listarmensagens":
         return _acaoListarMensagens(p);
 
+      case "sincronizarchat":
+        return _acaoSincronizarChat(p);
+
       case "enviarmensagem":
         return _acaoEnviarMensagem(p);
 
@@ -219,7 +313,11 @@ function _executar(e, metodo) {
         return _acaoAtualizarConfeccao(p);
 
       default:
-        return { ok: false, erro: "Ação não reconhecida: " + acao };
+        return {
+          ok: false,
+          erro: "Ação não reconhecida: " + acao,
+          codigo: "ACAO_DESCONHECIDA"
+        };
     }
   } catch (err) {
     return {
@@ -288,7 +386,10 @@ function _acaoLogin(p) {
 
 function _acaoLogout(p) {
   var token = _texto(p.token);
-  if (token) _excluirOnde(ABAS.SESSOES, function (r) { return r.token === token; });
+  if (token) {
+    _cacheApagar([_chaveSessao(token)]);
+    _excluirOnde(ABAS.SESSOES, function (r) { return r.token === token; });
+  }
   return { ok: true };
 }
 
@@ -321,6 +422,7 @@ function _acaoTrocarSenha(p) {
   _atualizarOnde(ABAS.USUARIOS, function (r) { return r.user === u.user; },
     { senha_hash: _hash(nova, salt), salt: salt });
   _excluirOnde(ABAS.SESSOES, function (r) { return r.user === u.user && r.token !== s.token; });
+  _invalidarUsuarios();
   _log(s.user, s.perfil, "trocar_senha", "");
   return { ok: true };
 }
@@ -495,6 +597,7 @@ function _acaoEnviarKanban(p) {
   _setConfig("ultimo_envio", agora.toISOString());
   _setConfig("ultimo_envio_por", s.user);
   _setConfig("ultimo_envio_total", linhas.length);
+  _invalidarDados();
 
   _log(s.user, s.perfil, "enviar_kanban", linhas.length + " pedidos · " +
     Object.keys(confsUsadas).length + " confecções" +
@@ -524,9 +627,35 @@ function _acaoEnviarKanban(p) {
   };
 }
 
+function _nomesConfeccoes() {
+  return _cacheLer("cn:" + VERSAO + ":" + _versaoDados(), CACHE_TTL.resumo, function () {
+    var nomes = {};
+    _lerObjetos(ABAS.CONFECCOES).forEach(function (c) { nomes[c.codigo] = c.nome; });
+    return nomes;
+  });
+}
+
 function _acaoListarPedidos(p) {
   var s = _exigirSessao(p);
   var filtro = _texto(p.codigo_confeccao);
+  var escopo = s.perfil === "Confecção"
+    ? (s.codigo_confeccao || "SEM-CONFECCAO")
+    : (filtro || "ALL");
+  var versao = _versaoDados();
+
+  // Nada mudou desde a última consulta: resposta de poucos bytes.
+  if (_texto(p.versao_dados) && _texto(p.versao_dados) === versao) {
+    return { ok: true, sem_alteracao: true, versao_dados: versao };
+  }
+
+  var corpo = _cacheLer("p:" + VERSAO + ":" + versao + ":" + escopo,
+    CACHE_TTL.pedidos, function () { return _montarListaPedidos(s, filtro); });
+  corpo.ok = true;
+  corpo.versao_dados = versao;
+  return corpo;
+}
+
+function _montarListaPedidos(s, filtro) {
   var pedidos = _pedidosVisiveis(s);
 
   if (s.perfil === "Analista" && filtro) {
@@ -534,8 +663,7 @@ function _acaoListarPedidos(p) {
   }
 
   var ultimo = _getConfig("ultimo_envio");
-  var nomes = {};
-  _lerObjetos(ABAS.CONFECCOES).forEach(function (c) { nomes[c.codigo] = c.nome; });
+  var nomes = _nomesConfeccoes();
 
   pedidos = pedidos.map(function (x) {
     var dias = _diasAte(x.dt_entrega);
@@ -570,7 +698,7 @@ function _acaoListarPedidos(p) {
     };
   });
 
-  return { ok: true, pedidos: pedidos, total: pedidos.length, ultimo_envio: ultimo };
+  return { pedidos: pedidos, total: pedidos.length, ultimo_envio: ultimo };
 }
 
 function _acaoAtualizarStatus(p) {
@@ -624,6 +752,7 @@ function _acaoAtualizarStatus(p) {
     pronto_parcial_em: "",
     pronto_parcial_por: ""
   });
+  _invalidarDados();
   _log(s.user, s.perfil, "status", chave + " → " + novo +
     (quebra ? " · " + quebra + " quebra" : ""));
 
@@ -707,6 +836,7 @@ function _acaoRegistrarProntoParcial(p) {
   }
 
   _atualizarOnde(ABAS.PEDIDOS, function (r) { return r.chave === chave; }, patch);
+  _invalidarDados();
   _log(s.user, s.perfil, "pronto_parcial",
     chave + " · " + total + "/" + saldo +
     (quebra ? " + " + quebra + " quebra" : "") + (completo ? " (pronto)" : ""));
@@ -721,8 +851,19 @@ function _acaoResumo(p) {
   var s = _exigirSessao(p);
   if (s.perfil !== "Analista") throw _erro("Sem permissão.", "SEM_PERMISSAO");
 
-  var nomes = {};
-  _lerObjetos(ABAS.CONFECCOES).forEach(function (c) { nomes[c.codigo] = c.nome; });
+  var versao = _versaoDados();
+  if (_texto(p.versao_dados) && _texto(p.versao_dados) === versao) {
+    return { ok: true, sem_alteracao: true, versao_dados: versao };
+  }
+
+  var corpo = _cacheLer("r:" + VERSAO + ":" + versao, CACHE_TTL.resumo, _montarResumo);
+  corpo.ok = true;
+  corpo.versao_dados = versao;
+  return corpo;
+}
+
+function _montarResumo() {
+  var nomes = _nomesConfeccoes();
 
   var mapa = {};
   _lerObjetos(ABAS.PEDIDOS).forEach(function (r) {
@@ -754,7 +895,7 @@ function _acaoResumo(p) {
   var lista = Object.keys(mapa).map(function (k) { return mapa[k]; })
     .sort(function (a, b) { return a.nome.localeCompare(b.nome); });
 
-  return { ok: true, confeccoes: lista, ultimo_envio: _getConfig("ultimo_envio") };
+  return { confeccoes: lista, ultimo_envio: _getConfig("ultimo_envio") };
 }
 
 /* ==========================================================================
@@ -763,6 +904,17 @@ function _acaoResumo(p) {
 
 function _acaoNotificacoes(p) {
   var s = _exigirSessao(p);
+  var escopo = s.perfil === "Confecção" ? (s.codigo_confeccao || "SEM") : "ALL";
+  var chave = "n:" + VERSAO + ":" + _versaoDados() + ":" + _hojeISO() + ":" + escopo;
+
+  var corpo = _cacheLer(chave, CACHE_TTL.notificacoes, function () {
+    return _montarNotificacoes(s);
+  });
+  corpo.ok = true;
+  return corpo;
+}
+
+function _montarNotificacoes(s) {
   var pedidos = _pedidosVisiveis(s);
   var hoje = _hojeISO();
   var alertas = [];
@@ -806,12 +958,14 @@ function _acaoNotificacoes(p) {
     return (a.dias === null ? 999 : a.dias) - (b.dias === null ? 999 : b.dias);
   });
 
+  var por = _naoLidasPorCache(s);
+  var naoLidas = Object.keys(por).reduce(function (t, k) { return t + por[k]; }, 0);
+
   return {
-    ok: true,
     alertas: alertas.slice(0, 300),
     total: alertas.length,
-    nao_lidas: _naoLidas(s),
-    nao_lidas_por: _naoLidasPor(s),
+    nao_lidas: naoLidas,
+    nao_lidas_por: por,
     ultimo_envio: _getConfig("ultimo_envio"),
     hoje: hoje
   };
@@ -843,8 +997,7 @@ function _acaoListarMensagens(p) {
     })
     .sort(function (a, b) { return a.data < b.data ? -1 : a.data > b.data ? 1 : 0; });
 
-  var nomes = {};
-  _lerObjetos(ABAS.USUARIOS).forEach(function (u) { nomes[u.user] = u.nome || u.user; });
+  var nomes = _mapaNomes();
   msgs.forEach(function (m) { m.de_nome = nomes[m.de] || m.de; });
 
   return { ok: true, mensagens: msgs.slice(-300), codigo_confeccao: codigo };
@@ -869,29 +1022,173 @@ function _acaoEnviarMensagem(p) {
     data: new Date(),
     lido: false
   });
+  _invalidarDados();
   _log(s.user, s.perfil, "chat", codigo);
 
   return { ok: true, id: id, data: new Date().toISOString() };
 }
 
+function _marcarLidasThread(s, codigo) {
+  if (!codigo) return 0;
+  return _atualizarOnde(ABAS.CHAT, function (r) {
+    var minha = s.perfil === "Confecção"
+      ? r.autor_perfil !== "Confecção"
+      : r.autor_perfil === "Confecção";
+    return r.codigo_confeccao === codigo && minha && !_bool(r.lido);
+  }, { lido: true });
+}
+
 function _acaoMarcarLidas(p) {
   var s = _exigirSessao(p);
   var codigo = s.perfil === "Confecção" ? s.codigo_confeccao : _texto(p.codigo_confeccao);
-  if (!codigo) return { ok: true, marcadas: 0 };
-
-  var n = 0;
-  _atualizarOnde(ABAS.CHAT, function (r) {
-    var minha = s.perfil === "Confecção" ? r.autor_perfil !== "Confecção" : r.autor_perfil === "Confecção";
-    if (r.codigo_confeccao === codigo && minha && !_bool(r.lido)) { n++; return true; }
-    return false;
-  }, { lido: true });
-
+  var n = _marcarLidasThread(s, codigo);
+  if (n) _invalidarDados();
   return { ok: true, marcadas: n };
+}
+
+/**
+ * Sincronização do chat em UMA chamada.
+ *
+ * O cliente guarda a última linha lida e pede só o delta. A aba Chat é
+ * append-only, então a posição da linha é um cursor estável (o id não é,
+ * porque é timestamp + aleatório e a ordenação é pela data).
+ *
+ * `desde_linha` é o número da linha de DADOS (1 = primeira após o cabeçalho).
+ * Ausente/0, planilha encolhida ou linha inválida -> carga completa (300).
+ */
+function _acaoSincronizarChat(p) {
+  var s = _exigirSessao(p);
+  var codigo = s.perfil === "Confecção" ? s.codigo_confeccao : _texto(p.codigo_confeccao);
+  if (!codigo) throw _erro("Selecione uma confecção.", "VALIDACAO");
+
+  var sh = _aba(ABAS.CHAT);
+  var total = Math.max(0, sh.getLastRow() - 1);
+
+  var desde = parseInt(p.desde_linha, 10);
+  var totalCli = parseInt(p.total_linhas, 10);
+  var limite = parseInt(p.limite, 10);
+  if (!(limite > 0)) limite = 100;
+  limite = Math.min(limite, 300);
+
+  var completo = !(desde >= 1) || isNaN(desde) || desde > total;
+  // Planilha editada à mão (linha removida): o cursor do cliente não vale mais.
+  if (!isNaN(totalCli) && totalCli > total) completo = true;
+
+  var inicio, fim;
+  if (completo) {
+    inicio = Math.max(1, total - 299);
+    fim = total;
+  } else {
+    inicio = desde + 1;
+    fim = Math.min(total, inicio + limite - 1);
+  }
+
+  var cab = ESQUEMA[ABAS.CHAT];
+  var linhas = [];
+  if (total > 0 && fim >= inicio) {
+    linhas = sh.getRange(inicio + 1, 1, fim - inicio + 1, cab.length).getValues();
+  }
+
+  var nomes = _mapaNomes();
+  var idxLido = cab.indexOf("lido");
+  var marcar = [];
+  var mensagens = [];
+
+  linhas.forEach(function (linha, i) {
+    if (linha.join("") === "") return;
+    var o = {};
+    cab.forEach(function (h, j) { o[h] = linha[j]; });
+    if (o.codigo_confeccao !== codigo) return;
+
+    var lido = _bool(o.lido);
+    mensagens.push({
+      id: o.id,
+      de: o.de,
+      de_nome: nomes[o.de] || o.de,
+      para: o.para,
+      autor_perfil: o.autor_perfil,
+      mensagem: o.mensagem,
+      data: o.data ? _iso(o.data) : "",
+      lido: lido,
+      linha: inicio + i
+    });
+    if (!lido) marcar.push(i);
+  });
+
+  // Badge antes de marcar: depois do bump de versão esta leitura sairia do cache.
+  var por = _naoLidasPorCache(s);
+  var marcadas = 0;
+
+  if (_bool(p.marcar_lidas)) {
+    if (completo) {
+      // Carga completa é rara (abrir a conversa): aproveita e marca tudo,
+      // inclusive mensagens antigas fora da janela de 300.
+      marcadas = _marcarLidasThread(s, codigo);
+      if (marcadas) {
+        mensagens.forEach(function (m) {
+          if (s.perfil === "Confecção" ? m.autor_perfil !== "Confecção"
+            : m.autor_perfil === "Confecção") m.lido = true;
+        });
+      }
+    } else if (marcar.length && idxLido >= 0) {
+      // Só os blocos contíguos: nunca reescreve a aba inteira.
+      marcadas = _comLock(function () {
+        var n = 0;
+        var i = 0;
+        while (i < marcar.length) {
+          var ini = marcar[i];
+          var fimi = ini;
+          while (i + 1 < marcar.length && marcar[i + 1] === fimi + 1) {
+            i++;
+            fimi = marcar[i];
+          }
+          var bloco = [];
+          for (var r = ini; r <= fimi; r++) bloco.push([true]);
+          sh.getRange(inicio + ini + 1, idxLido + 1, bloco.length, 1).setValues(bloco);
+          n += bloco.length;
+          i++;
+        }
+        return n;
+      });
+      if (marcadas) {
+        mensagens.forEach(function (m) {
+          if (!m.lido && marcar.indexOf(m.linha - inicio) >= 0) m.lido = true;
+        });
+      }
+    }
+    if (marcadas) _invalidarDados();
+  }
+
+  if (marcadas && por[codigo]) {
+    por[codigo] = Math.max(0, por[codigo] - marcadas);
+  }
+  var naoLidas = Object.keys(por).reduce(function (t, k) { return t + por[k]; }, 0);
+
+  return {
+    ok: true,
+    codigo_confeccao: codigo,
+    modo: completo ? "completo" : "incremental",
+    cursor: { ultima_linha: fim, total_linhas: total },
+    mensagens: mensagens,
+    tem_mais: !completo && fim < total,
+    marcadas: marcadas,
+    nao_lidas: naoLidas,
+    nao_lidas_por: por,
+    servidor_em: new Date().toISOString()
+  };
 }
 
 function _naoLidas(s) {
   var mapa = _naoLidasPor(s);
   return Object.keys(mapa).reduce(function (total, k) { return total + mapa[k]; }, 0);
+}
+
+function _naoLidasPorCache(s) {
+  var escopo = s.perfil === "Confecção"
+    ? "C:" + (s.codigo_confeccao || "")
+    : "A";
+  return _cacheLer("nl:" + VERSAO + ":" + _versaoDados() + ":" + escopo,
+    CACHE_TTL.naolidas, function () { return _naoLidasPor(s); });
 }
 
 /** Mensagens não lidas agrupadas por código de confecção (usado no chat). */
@@ -967,6 +1264,7 @@ function _acaoCriarUsuario(p) {
     criado_em: new Date(),
     ultimo_login: ""
   });
+  _invalidarUsuarios();
   _log(s.user, s.perfil, "criar_usuario", user + " (" + perfil + ")");
 
   return { ok: true, user: user };
@@ -1005,6 +1303,7 @@ function _acaoAtualizarUsuario(p) {
   if (patch.ativo === false || patch.senha) {
     _excluirOnde(ABAS.SESSOES, function (r) { return r.user === user; });
   }
+  _invalidarUsuarios();
   _log(s.user, s.perfil, "atualizar_usuario", user);
 
   return { ok: true };
@@ -1021,6 +1320,7 @@ function _acaoExcluirUsuario(p) {
 
   _excluirOnde(ABAS.USUARIOS, function (r) { return r.user === user; });
   _excluirOnde(ABAS.SESSOES, function (r) { return r.user === user; });
+  _invalidarUsuarios();
   _log(s.user, s.perfil, "excluir_usuario", user);
 
   return { ok: true };
@@ -1097,6 +1397,7 @@ function _acaoAtualizarConfeccao(p) {
       { confeccao: patch.nome });
   }
 
+  _invalidarDados();
   _log(s.user, s.perfil, "atualizar_confeccao", codigo);
   return { ok: true, codigo: codigo };
 }
@@ -1195,35 +1496,42 @@ function _exigirSessao(p) {
   var token = _texto(p && p.token);
   if (!token) throw _erro("Sessão ausente. Faça login.", "SESSAO_INVALIDA");
 
-  var achou = null;
-  _lerObjetos(ABAS.SESSOES).forEach(function (r) { if (r.token === token) achou = r; });
-  if (!achou) throw _erro("Sessão expirada. Faça login novamente.", "SESSAO_INVALIDA");
+  var s = _cacheLer(_chaveSessao(token), CACHE_TTL.sessao, function () {
+    var achou = null;
+    _lerObjetos(ABAS.SESSOES).forEach(function (r) { if (r.token === token) achou = r; });
+    if (!achou) return null;
 
-  var expira = achou.expira_em instanceof Date ? achou.expira_em : new Date(achou.expira_em);
-  if (!expira || isNaN(expira.getTime()) || expira.getTime() < new Date().getTime()) {
-    _excluirOnde(ABAS.SESSOES, function (r) { return r.token === token; });
+    var expira = achou.expira_em instanceof Date ? achou.expira_em : new Date(achou.expira_em);
+    var ms = expira && !isNaN(expira.getTime()) ? expira.getTime() : 0;
+    if (!ms || ms < new Date().getTime()) return null;
+
+    var u = _buscarUsuarioAtivo(achou.user);
+    if (!u || !u.ativo) return null;
+
+    // Renovação deslizante (só grava se faltar menos de 6h)
+    if (ms - new Date().getTime() < 6 * 3600 * 1000) {
+      var nova = new Date(new Date().getTime() + SESSAO_HORAS * 3600 * 1000);
+      _atualizarOnde(ABAS.SESSOES, function (r) { return r.token === token; },
+        { expira_em: nova });
+      ms = nova.getTime();
+    }
+
+    return {
+      token: token,
+      user: u.user,
+      nome: u.nome || u.user,
+      perfil: u.perfil,
+      codigo_confeccao: u.codigo_confeccao || "",
+      expira_em: ms
+    };
+  });
+
+  // A sessão pode ter vencido depois de entrar no cache.
+  if (!s || !s.expira_em || s.expira_em < new Date().getTime()) {
+    _cacheApagar([_chaveSessao(token)]);
     throw _erro("Sessão expirada. Faça login novamente.", "SESSAO_INVALIDA");
   }
-
-  var u = _buscarUsuario(achou.user);
-  if (!u || !_bool(u.ativo)) {
-    _excluirOnde(ABAS.SESSOES, function (r) { return r.token === token; });
-    throw _erro("Usuário inativo. Procure o analista.", "SESSAO_INVALIDA");
-  }
-
-  // Renovação deslizante (só grava se faltar menos de 6h)
-  if (expira.getTime() - new Date().getTime() < 6 * 3600 * 1000) {
-    _atualizarOnde(ABAS.SESSOES, function (r) { return r.token === token; },
-      { expira_em: new Date(new Date().getTime() + SESSAO_HORAS * 3600 * 1000) });
-  }
-
-  return {
-    token: token,
-    user: u.user,
-    nome: u.nome || u.user,
-    perfil: u.perfil,
-    codigo_confeccao: u.codigo_confeccao || ""
-  };
+  return s;
 }
 
 function _loginSemSessao(user, senha) {
@@ -1237,6 +1545,36 @@ function _loginSemSessao(user, senha) {
     perfil: u.perfil,
     codigo_confeccao: u.codigo_confeccao || ""
   };
+}
+
+function _mapaUsuarios() {
+  return _cacheLer("u:" + VERSAO + ":" + _versaoUsuarios(), CACHE_TTL.usuarios, function () {
+    var mapa = {};
+    _lerObjetos(ABAS.USUARIOS).forEach(function (r) {
+      mapa[String(r.user).toLowerCase()] = {
+        user: r.user,
+        nome: r.nome || r.user,
+        perfil: r.perfil,
+        codigo_confeccao: r.codigo_confeccao || "",
+        ativo: _bool(r.ativo)
+      };
+    });
+    return mapa;
+  });
+}
+
+/** Usuário (sem hash/salt) para validar sessão sem reler a aba. */
+function _buscarUsuarioAtivo(user) {
+  var mapa = _mapaUsuarios();
+  return mapa[String(user || "").toLowerCase()] || null;
+}
+
+/** user -> nome de exibição, usado no chat e no resumo. */
+function _mapaNomes() {
+  var mapa = _mapaUsuarios();
+  var nomes = {};
+  Object.keys(mapa).forEach(function (k) { nomes[mapa[k].user] = mapa[k].nome; });
+  return nomes;
 }
 
 function _buscarUsuario(user) {
@@ -1271,10 +1609,15 @@ function _pedidosVisiveis(s) {
 function _aba(nome) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getSheetByName(nome);
-  if (!sh) sh = ss.insertSheet(nome);
-  // Garante que colunas novas (ex.: qtd_pronta) existam sem precisar
-  // rodar setup() novamente em uma planilha já em uso.
-  if (ESQUEMA[nome]) _garantirCabecalho(sh, ESQUEMA[nome]);
+  if (!sh) {
+    sh = ss.insertSheet(nome);
+    // Aba nova: cria o cabeçalho uma única vez.
+    if (ESQUEMA[nome]) _garantirCabecalho(sh, ESQUEMA[nome]);
+  } else if (ESQUEMA[nome] && sh.getLastColumn() < ESQUEMA[nome].length) {
+    // Planilha antiga que ganhou coluna nova (ex.: qtd_quebra). getLastColumn
+    // é metadado barato; a leitura da faixa só acontece quando falta coluna.
+    _garantirCabecalho(sh, ESQUEMA[nome]);
+  }
   return sh;
 }
 
@@ -1295,73 +1638,88 @@ function _lerObjetos(nome) {
 }
 
 function _anexar(nome, obj) {
-  var sh = _aba(nome);
-  var cab = ESQUEMA[nome];
-  sh.appendRow(cab.map(function (h) { return obj[h] !== undefined ? obj[h] : ""; }));
+  return _comLock(function () {
+    var sh = _aba(nome);
+    var cab = ESQUEMA[nome];
+    sh.appendRow(cab.map(function (h) { return obj[h] !== undefined ? obj[h] : ""; }));
+  });
 }
 
 function _atualizarOnde(nome, filtro, patch) {
-  var sh = _aba(nome);
-  var cab = ESQUEMA[nome] || sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
-  var ultima = sh.getLastRow();
-  if (ultima < 2) return 0;
+  return _comLock(function () {
+    var sh = _aba(nome);
+    var cab = ESQUEMA[nome] || sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+    var ultima = sh.getLastRow();
+    if (ultima < 2) return 0;
 
-  var valores = sh.getRange(2, 1, ultima - 1, cab.length).getValues();
-  var alterados = 0;
+    var valores = sh.getRange(2, 1, ultima - 1, cab.length).getValues();
+    var alterados = 0;
 
-  valores.forEach(function (linha, i) {
-    var o = {};
-    cab.forEach(function (h, j) { o[h] = linha[j]; });
-    if (!filtro(o)) return;
-    Object.keys(patch).forEach(function (k) {
-      var j = cab.indexOf(k);
-      if (j >= 0) linha[j] = patch[k];
+    valores.forEach(function (linha, i) {
+      var o = {};
+      cab.forEach(function (h, j) { o[h] = linha[j]; });
+      if (!filtro(o)) return;
+      Object.keys(patch).forEach(function (k) {
+        var j = cab.indexOf(k);
+        if (j >= 0) linha[j] = patch[k];
+      });
+      alterados++;
     });
-    alterados++;
-  });
 
-  if (alterados) sh.getRange(2, 1, valores.length, cab.length).setValues(valores);
-  return alterados;
+    if (alterados) sh.getRange(2, 1, valores.length, cab.length).setValues(valores);
+    return alterados;
+  });
 }
 
 function _excluirOnde(nome, filtro) {
-  var sh = _aba(nome);
-  var cab = ESQUEMA[nome];
-  var ultima = sh.getLastRow();
-  if (ultima < 2) return 0;
+  return _comLock(function () {
+    var sh = _aba(nome);
+    var cab = ESQUEMA[nome];
+    var ultima = sh.getLastRow();
+    if (ultima < 2) return 0;
 
-  var valores = sh.getRange(2, 1, ultima - 1, cab.length).getValues();
-  var mantidas = [];
-  valores.forEach(function (linha) {
-    var o = {};
-    cab.forEach(function (h, i) { o[h] = linha[i]; });
-    if (!filtro(o) && linha.join("") !== "") mantidas.push(linha);
+    var valores = sh.getRange(2, 1, ultima - 1, cab.length).getValues();
+    var mantidas = [];
+    valores.forEach(function (linha) {
+      var o = {};
+      cab.forEach(function (h, i) { o[h] = linha[i]; });
+      if (!filtro(o) && linha.join("") !== "") mantidas.push(linha);
+    });
+
+    var removidas = valores.length - mantidas.length;
+    if (!removidas) return 0;
+
+    sh.getRange(2, 1, valores.length, cab.length).clearContent();
+    if (mantidas.length) sh.getRange(2, 1, mantidas.length, cab.length).setValues(mantidas);
+    return removidas;
   });
-
-  var removidas = valores.length - mantidas.length;
-  if (!removidas) return 0;
-
-  sh.getRange(2, 1, valores.length, cab.length).clearContent();
-  if (mantidas.length) sh.getRange(2, 1, mantidas.length, cab.length).setValues(mantidas);
-  return removidas;
 }
 
 function _substituirLinhas(nome, linhas) {
-  var sh = _aba(nome);
-  var cab = ESQUEMA[nome];
-  var ultima = sh.getLastRow();
-  if (ultima > 1) sh.getRange(2, 1, ultima - 1, cab.length).clearContent();
-  if (!linhas.length) return;
+  return _comLock(function () {
+    var sh = _aba(nome);
+    var cab = ESQUEMA[nome];
+    var ultima = sh.getLastRow();
+    if (ultima > 1) sh.getRange(2, 1, ultima - 1, cab.length).clearContent();
+    if (!linhas.length) return;
 
-  var valores = linhas.map(function (o) {
-    return cab.map(function (h) { return o[h] !== undefined ? o[h] : ""; });
+    var valores = linhas.map(function (o) {
+      return cab.map(function (h) { return o[h] !== undefined ? o[h] : ""; });
+    });
+    sh.getRange(2, 1, valores.length, cab.length).setValues(valores);
   });
-  sh.getRange(2, 1, valores.length, cab.length).setValues(valores);
+}
+
+function _mapaConfig() {
+  return _cacheLer("cfg:" + VERSAO + ":" + _versaoDados(), CACHE_TTL.config, function () {
+    var mapa = {};
+    _lerObjetos(ABAS.CONFIG).forEach(function (r) { mapa[r.chave] = r.valor; });
+    return mapa;
+  });
 }
 
 function _getConfig(chave) {
-  var valor = "";
-  _lerObjetos(ABAS.CONFIG).forEach(function (r) { if (r.chave === chave) valor = r.valor; });
+  var valor = _mapaConfig()[chave];
   return valor === "" || valor === null || valor === undefined ? "" : String(valor);
 }
 
@@ -1372,6 +1730,9 @@ function _setConfig(chave, valor) {
     return false;
   }, { valor: valor });
   if (!existe) _anexar(ABAS.CONFIG, { chave: chave, valor: valor });
+  // Config entra na chave dos snapshots: sem o bump, o resumo continuaria
+  // anunciando o "último envio" anterior.
+  _invalidarDados();
 }
 
 function _log(user, perfil, acao, detalhe) {

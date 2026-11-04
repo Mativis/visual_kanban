@@ -25,6 +25,8 @@
     apiUrlPadrao: String(CFG.apiUrl || "").trim(),
     pollMs: Number(CFG.pollMs) || 20000,
     chatPollMs: Number(CFG.chatPollMs) || 8000,
+    chatPollOciosoMs: Number(CFG.chatPollOciosoMs) || 60000,
+    chatSync: CFG.chatSync !== false,
     appNome: CFG.appNome || "Visual Kanban",
     versao: CFG.versao || "1.0.0",
   };
@@ -39,6 +41,9 @@
     naoLidas: 0,
     naoLidasPor: {},
     ultimoEnvio: "",
+    // Versão global devolvida pelo servidor + escopo a que os pedidos se referem.
+    versaoDados: "",
+    versaoEscopo: "",
     tab: "kanban",
     thread: "",
     arrastando: false,
@@ -82,10 +87,64 @@
   VK.patchSession = function (patch) {
     VK.setSession(Object.assign({}, VK.session() || {}, patch || {}));
   };
-  VK.logoutLocal = function () { localStorage.removeItem(LS_SESSAO); };
+  VK.logoutLocal = function () {
+    localStorage.removeItem(LS_SESSAO);
+    if (VK.cacheLocal) VK.cacheLocal.limpar();
+  };
   VK.token = function () { var s = VK.session(); return s && s.token ? s.token : ""; };
   VK.perfil = function () { var s = VK.session(); return s && s.perfil ? s.perfil : ""; };
   VK.ehAnalista = function () { return VK.perfil() === "Analista"; };
+
+  /* ---------------- Cache local (stale-while-revalidate) ----------------
+     Guarda a última resposta boa de pedidos/resumo. A tela pinta na hora com
+     o que já existe e revalida em segundo plano. A chave inclui o usuário e a
+     versão do app: trocar de conta nunca reaproveita o quadro de outra. */
+
+  var LS_CACHE = "vk_cache:";
+  var CACHE_VALIDADE_MS = 24 * 3600 * 1000;
+  var CACHE_MAX_BYTES = 256 * 1024;
+
+  VK.cacheLocal = {
+    chave: function (tipo, escopo) {
+      var s = VK.session() || {};
+      return LS_CACHE + (VK.config.versao || "0") + ":" + (s.user || "anon") +
+        ":" + tipo + ":" + (escopo || "");
+    },
+
+    ler: function (tipo, escopo) {
+      try {
+        var bruto = localStorage.getItem(VK.cacheLocal.chave(tipo, escopo));
+        if (!bruto) return null;
+        var dados = JSON.parse(bruto);
+        if (!dados || !dados.em || Date.now() - dados.em > CACHE_VALIDADE_MS) return null;
+        return dados;
+      } catch (e) { return null; }
+    },
+
+    gravar: function (tipo, escopo, valor, versao) {
+      var chave = "";
+      try {
+        chave = VK.cacheLocal.chave(tipo, escopo);
+        var bruto = JSON.stringify({ em: Date.now(), versao: versao || "", valor: valor });
+        if (bruto.length > CACHE_MAX_BYTES) { localStorage.removeItem(chave); return; }
+        localStorage.setItem(chave, bruto);
+      } catch (e) {
+        // Cota cheia: joga o cache fora e segue sem ele.
+        try { if (chave) localStorage.removeItem(chave); } catch (e2) {}
+      }
+    },
+
+    limpar: function () {
+      try {
+        var remover = [];
+        for (var i = 0; i < localStorage.length; i++) {
+          var k = localStorage.key(i);
+          if (k && k.indexOf(LS_CACHE) === 0) remover.push(k);
+        }
+        remover.forEach(function (k) { localStorage.removeItem(k); });
+      } catch (e) {}
+    },
+  };
 
   VK.expirarSessao = function () {
     VK.logoutLocal();
