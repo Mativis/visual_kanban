@@ -153,10 +153,20 @@
     }
   };
 
+  // Ações que gravam: não podem ser repetidas automaticamente (mensagem
+  // duplicada é pior do que pedir para tentar de novo).
+  var ACOES_ESCRITA = {
+    login: 1, logout: 1, trocarsenha: 1, enviarkanban: 1, atualizarstatus: 1,
+    registrarprontoparcial: 1, enviarmensagem: 1, marcarlidas: 1,
+    sincronizarchat: 1, criarusuario: 1, atualizarusuario: 1, excluirusuario: 1,
+    atualizarconfeccao: 1,
+  };
+
   /**
    * Chamada à API.
-   * Usa POST com corpo texto (evita o preflight CORS do Apps Script) e
-   * cai para GET com ?payload= se a rede bloquear o POST.
+   * GET com ?payload= responde em ~1 s no Apps Script; POST com corpo leva
+   * ~2 s (redirect do /exec). Payloads grandes (enviarkanban) continuam indo
+   * por POST. Se o GET falhar na rede, tenta POST uma vez — só para leituras.
    */
   VK.call = function (action, payload, opcoes) {
     payload = payload || {};
@@ -179,19 +189,34 @@
 
     function limpar() { if (timer) clearTimeout(timer); }
 
-    return fetch(url, {
-      method: "POST",
-      body: JSON.stringify(corpo),
-      redirect: "follow",
-      cache: "no-store",
-      signal: ctrl ? ctrl.signal : undefined,
-    })
-      .catch(function () {
-        // Fallback: GET com payload na querystring
-        var qs = new URLSearchParams({ payload: JSON.stringify(corpo) });
-        var sep = url.indexOf("?") >= 0 ? "&" : "?";
-        return fetch(url + sep + qs.toString(), { redirect: "follow", cache: "no-store" });
-      })
+    var bruto = JSON.stringify(corpo);
+    var qs = new URLSearchParams({ payload: bruto }).toString();
+    var porGet = qs.length <= 6000;
+    var sep = url.indexOf("?") >= 0 ? "&" : "?";
+    var urlGet = url + sep + qs;
+    var escrita = !!ACOES_ESCRITA[String(action).toLowerCase()];
+
+    function pedir(metodo) {
+      var cfgFetch = {
+        method: metodo,
+        redirect: "follow",
+        cache: "no-store",
+        signal: ctrl ? ctrl.signal : undefined,
+      };
+      if (metodo === "GET") return fetch(urlGet, cfgFetch);
+      cfgFetch.body = bruto;
+      return fetch(url, cfgFetch);
+    }
+
+    var tentativa = pedir(porGet ? "GET" : "POST");
+    if (!escrita && porGet) {
+      tentativa = tentativa.catch(function (erro) {
+        if (erro && erro.name === "AbortError") throw erro;
+        return pedir("POST");
+      });
+    }
+
+    return tentativa
       .then(function (resp) {
         limpar();
         if (!resp || !resp.ok) {
