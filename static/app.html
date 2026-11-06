@@ -9,11 +9,16 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Visual Kanban · Painel</title>
-  <link rel="stylesheet" href="css/style.css?v=1.4.1">
+  <link rel="stylesheet" href="css/style.css?v=1.5.0">
 </head>
 <body class="app-body">
 
   <header class="topbar">
+    <button class="nav-toggle" id="btn-menu" type="button" aria-label="Abrir menu"
+            aria-controls="drawer" aria-expanded="false">
+      <span class="bars" aria-hidden="true"><i></i><i></i><i></i></span>
+    </button>
+
     <div class="brand">
       <span class="logo-mark sm">VK</span>
       <div>
@@ -22,25 +27,20 @@
       </div>
     </div>
 
-    <nav class="tabs" id="tabs">
-      <button class="tab active" data-tab="kanban">Kanban</button>
-      <button class="tab" data-tab="chat">Chat <span class="badge neutro hide" id="badge-chat">0</span></button>
-      <button class="tab" data-tab="alertas">Alertas <span class="badge neutro hide" id="badge-alertas">0</span></button>
-      <button class="tab hide" id="tab-admin" data-tab="admin">Administração</button>
-    </nav>
+    <div class="topbar-title" id="topbar-title">Kanban</div>
 
     <div class="topbar-right">
       <span class="sync" id="sync-info"></span>
       <div class="user-menu">
         <button class="user-chip" id="btn-user" type="button">
-          <span class="avatar" id="user-avatar">?</span>
-          <span class="user-name" id="user-name">…</span>
-          <span class="role" id="user-role">…</span>
+          <span class="avatar" id="user-avatar" data-user="avatar">?</span>
+          <span class="user-name" id="user-name" data-user="nome">…</span>
+          <span class="role" id="user-role" data-user="role">…</span>
         </button>
         <div class="dropdown hide" id="user-dropdown">
           <div class="dd-head">
-            <strong id="dd-nome">…</strong>
-            <small id="dd-conf"></small>
+            <strong id="dd-nome" data-user="nome">…</strong>
+            <small id="dd-conf" data-user="conf"></small>
             <small id="dd-versao" class="dd-versao"></small>
           </div>
           <button type="button" data-act="senha">Trocar senha</button>
@@ -51,6 +51,52 @@
       </div>
     </div>
   </header>
+
+  <div class="drawer-scrim hide" id="drawer-scrim"></div>
+  <aside class="drawer" id="drawer" aria-label="Navegação principal" aria-hidden="true">
+    <div class="drawer-head">
+      <span class="logo-mark sm">VK</span>
+      <div>
+        <strong>Visual Kanban</strong>
+        <small>painel</small>
+      </div>
+    </div>
+
+    <nav class="drawer-nav" id="drawer-nav">
+      <button class="tab active" type="button" data-tab="kanban">
+        <span class="nav-ico" aria-hidden="true">▦</span><span>Kanban</span>
+      </button>
+      <button class="tab" type="button" data-tab="chat">
+        <span class="nav-ico" aria-hidden="true">✉</span><span>Chat</span>
+        <span class="badge neutro hide" data-badge="badge-chat">0</span>
+      </button>
+      <button class="tab" type="button" data-tab="alertas">
+        <span class="nav-ico" aria-hidden="true">⚠</span><span>Alertas</span>
+        <span class="badge neutro hide" data-badge="badge-alertas">0</span>
+      </button>
+      <button class="tab hide" type="button" data-tab="admin" data-admin="1">
+        <span class="nav-ico" aria-hidden="true">⚙</span><span>Administração</span>
+      </button>
+    </nav>
+
+    <div class="drawer-profile">
+      <span class="avatar" data-user="avatar">?</span>
+      <div class="info">
+        <strong data-user="nome">…</strong>
+        <small data-user="conf">…</small>
+      </div>
+      <span class="role" data-user="role">…</span>
+    </div>
+
+    <div class="drawer-actions">
+      <button type="button" data-act="senha">Trocar senha</button>
+      <button type="button" data-act="conexao">Configurar conexão</button>
+      <button type="button" data-act="verificar-ota" class="hide">Verificar atualizações</button>
+      <button type="button" data-act="sair" class="danger">Sair</button>
+    </div>
+
+    <p class="drawer-foot">Versão <span data-user="versao">—</span></p>
+  </aside>
 
   <main class="app-main">
 
@@ -142,7 +188,10 @@
           <button class="btn ghost" id="btn-alertas-atualizar" type="button">↻ Atualizar</button>
         </div>
       </div>
-      <div class="alerts" id="alerts-list"></div>
+      <div class="alerts-layout">
+        <div class="alerts" id="alerts-list"></div>
+        <aside class="alert-detail" id="alert-detail" aria-live="polite"></aside>
+      </div>
     </section>
 
     <!-- ========================= ADMINISTRAÇÃO ======================== -->
@@ -183,6 +232,23 @@
     </section>
 
   </main>
+
+  <nav class="bottom-nav" id="bottom-nav" aria-label="Navegação principal">
+    <button class="bn-item active" type="button" data-tab="kanban">
+      <span class="bn-ico" aria-hidden="true">▦</span><span class="bn-label">Kanban</span>
+    </button>
+    <button class="bn-item" type="button" data-tab="chat">
+      <span class="bn-ico" aria-hidden="true">✉</span><span class="bn-label">Chat</span>
+      <span class="badge hide" data-badge="badge-chat">0</span>
+    </button>
+    <button class="bn-item" type="button" data-tab="alertas">
+      <span class="bn-ico" aria-hidden="true">⚠</span><span class="bn-label">Alertas</span>
+      <span class="badge hide" data-badge="badge-alertas">0</span>
+    </button>
+    <button class="bn-item" type="button" id="btn-mais" data-mais="1">
+      <span class="bn-ico" aria-hidden="true">⋯</span><span class="bn-label">Mais</span>
+    </button>
+  </nav>
 
   <!-- ======================= DIÁLOGOS ======================= -->
 
@@ -366,14 +432,49 @@
     </form>
   </dialog>
 
+  <dialog id="dlg-mais" class="dlg-mais">
+    <header class="dlg-head">
+      <h3>Mais</h3>
+      <button class="fechar" type="button" onclick="VK.fecharDialogo('dlg-mais')">×</button>
+    </header>
+    <div class="dlg-body mais-body">
+      <div class="mais-perfil">
+        <span class="avatar" data-user="avatar">?</span>
+        <div class="info">
+          <strong data-user="nome">…</strong>
+          <small data-user="conf">…</small>
+        </div>
+        <span class="role" data-user="role">…</span>
+      </div>
+      <div class="mais-lista">
+        <button class="mais-item hide" type="button" data-tab="admin" data-admin="1">
+          <span class="nav-ico" aria-hidden="true">⚙</span><span>Administração</span>
+        </button>
+        <button class="mais-item" type="button" data-act="senha">
+          <span class="nav-ico" aria-hidden="true">🔑</span><span>Trocar senha</span>
+        </button>
+        <button class="mais-item" type="button" data-act="conexao">
+          <span class="nav-ico" aria-hidden="true">🔌</span><span>Configurar conexão</span>
+        </button>
+        <button class="mais-item hide" type="button" data-act="verificar-ota">
+          <span class="nav-ico" aria-hidden="true">↻</span><span>Verificar atualizações</span>
+        </button>
+        <button class="mais-item danger" type="button" data-act="sair">
+          <span class="nav-ico" aria-hidden="true">⏻</span><span>Sair</span>
+        </button>
+      </div>
+      <p class="mais-verso">Versão <span data-user="versao">—</span></p>
+    </div>
+  </dialog>
+
   <div class="toasts" id="toasts"></div>
 
-  <script src="js/config.js?v=1.4.1"></script>
-  <script src="js/core.js?v=1.4.1"></script>
-  <script src="js/native.js?v=1.4.1"></script>
-  <script src="js/app.js?v=1.4.1"></script>
-  <script src="js/kanban.js?v=1.4.1"></script>
-  <script src="js/chat.js?v=1.4.1"></script>
-  <script src="js/admin.js?v=1.4.1"></script>
+  <script src="js/config.js?v=1.5.0"></script>
+  <script src="js/core.js?v=1.5.0"></script>
+  <script src="js/native.js?v=1.5.0"></script>
+  <script src="js/app.js?v=1.5.0"></script>
+  <script src="js/kanban.js?v=1.5.0"></script>
+  <script src="js/chat.js?v=1.5.0"></script>
+  <script src="js/admin.js?v=1.5.0"></script>
 </body>
 </html>

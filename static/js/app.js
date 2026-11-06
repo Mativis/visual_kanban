@@ -20,21 +20,34 @@
   function renderUsuario() {
     var s = VK.session() || {};
     var nome = s.nome || s.user || "—";
-
-    VK.$("#user-name").textContent = nome;
-    VK.$("#user-avatar").textContent = VK.iniciais(nome);
-    VK.$("#dd-nome").textContent = nome;
-    VK.$("#dd-conf").textContent = s.perfil === "Analista"
+    var analista = s.perfil === "Analista";
+    var conf = analista
       ? "Acesso a todas as confecções"
       : (s.nome_confeccao || "Confecção não vinculada");
 
-    var role = VK.$("#user-role");
-    role.textContent = s.perfil || "";
-    role.className = "role " + (s.perfil === "Analista" ? "Analista" : "Confecção");
+    VK.$$('[data-user="nome"]').forEach(function (el) { el.textContent = nome; });
+    VK.$$('[data-user="avatar"]').forEach(function (el) { el.textContent = VK.iniciais(nome); });
+    VK.$$('[data-user="conf"]').forEach(function (el) { el.textContent = conf; });
+    VK.$$('[data-user="role"]').forEach(function (el) {
+      el.textContent = s.perfil || "";
+      el.className = "role " + (analista ? "Analista" : "Confecção");
+    });
 
-    VK.$("#brand-sub").textContent = s.perfil === "Analista" ? "visão analista" : "visão confecção";
-    VK.$("#tab-admin").classList.toggle("hide", s.perfil !== "Analista");
-    VK.$("#f-conf").classList.toggle("hide", s.perfil !== "Analista");
+    var versao = VK.nativo
+      ? (VK.webVersao || VK.appVersao || (VK.config && VK.config.versao))
+      : (VK.config && VK.config.versao);
+    VK.$$('[data-user="versao"]').forEach(function (el) {
+      el.textContent = versao || "—";
+    });
+
+    var brandSub = VK.$("#brand-sub");
+    if (brandSub) brandSub.textContent = analista ? "visão analista" : "visão confecção";
+
+    VK.$$("[data-admin]").forEach(function (el) {
+      el.classList.toggle("hide", !analista);
+    });
+    var fConf = VK.$("#f-conf");
+    if (fConf) fConf.classList.toggle("hide", !analista);
   }
 
   VK.renderUsuario = renderUsuario;
@@ -195,10 +208,30 @@
     sem_confeccao: "🏭",
   };
 
-  // Um único listener: o conteúdo de #alerts-list é recriado a cada render.
-  VK.on(VK.$("#alerts-list"), "click", ".alerta", function (ev, el) {
-    var chave = el.getAttribute("data-chave");
-    var codigo = el.getAttribute("data-codigo");
+  var NOMES_TIPO = {
+    atrasado: "Atrasado",
+    vence: "Vence em breve",
+    prioridade: "Prioridade alta",
+    sem_confeccao: "Sem confecção",
+  };
+
+  function idAlerta(a) {
+    return String(a.chave || "") + "|" + String(a.tipo || "");
+  }
+
+  function alertaPorId(id) {
+    var lista = VK.state.alertas || [];
+    for (var i = 0; i < lista.length; i++) {
+      if (idAlerta(lista[i]) === id) return lista[i];
+    }
+    return null;
+  }
+
+  function masterDetailAlertas() {
+    return !!(window.matchMedia && window.matchMedia("(min-width: 1100px)").matches);
+  }
+
+  function abrirNoKanban(chave, codigo) {
     if (codigo && VK.ehAnalista() && VK.state.filtros.confeccao !== codigo) {
       VK.state.filtros.confeccao = codigo;
       var sel = VK.$("#f-conf");
@@ -206,6 +239,75 @@
     }
     VK.nav("kanban");
     if (chave && VK.kanban && VK.kanban.abrirPedido) VK.kanban.abrirPedido(chave);
+  }
+
+  function renderDetalheAlerta() {
+    var painel = VK.$("#alert-detail");
+    if (!painel) return;
+
+    var a = alertaPorId(VK.state.alertaSel || "");
+    if (!a) {
+      painel.className = "alert-detail";
+      painel.innerHTML = '<div class="ad-vazio"><span class="big">⚠</span>' +
+        (VK.state.alertaSel
+          ? "Este alerta saiu da lista."
+          : "Selecione um alerta para ver os detalhes.") +
+        "</div>";
+      return;
+    }
+
+    var sev = Number(a.severidade) || 1;
+    var tipo = NOMES_TIPO[a.tipo] || "Alerta";
+    var st = a.status || "—";
+    var pillClass = st === "Em andamento" ? "Média" : st;
+    var prazo = VK.dataBR(a.dt_entrega);
+
+    if (a.dias !== null && a.dias !== "" && !isNaN(Number(a.dias))) {
+      var dias = Number(a.dias);
+      if (dias < 0) prazo += " · atrasado há " + Math.abs(dias) + " dia(s)";
+      else if (dias === 0) prazo += " · entrega hoje";
+      else prazo += " · faltam " + dias + " dia(s)";
+    }
+
+    painel.className = "alert-detail sev-" + sev;
+    painel.innerHTML =
+      '<div class="ad-head">' +
+        '<div class="ad-ico">' + (ICONES[a.tipo] || "•") + "</div>" +
+        "<div><h3>" + VK.esc(a.titulo || tipo) + "</h3>" +
+          '<div class="ad-sub">Pedido #' + VK.esc(a.pedido || "—") +
+            " · Cód " + VK.esc(a.cod_confec || "—") + "</div>" +
+          '<span class="ad-sev">' + VK.esc(tipo) + "</span>" +
+        "</div>" +
+      "</div>" +
+      '<div class="detalhe">' +
+        '<div class="item"><span>Confecção</span><strong>' +
+          VK.esc(a.confeccao || "Sem confecção") + "</strong></div>" +
+        '<div class="item"><span>Código de vínculo</span><strong>' +
+          VK.esc(a.codigo_confeccao || "—") + "</strong></div>" +
+        '<div class="item"><span>Entrega</span><strong>' + VK.esc(prazo) + "</strong></div>" +
+        '<div class="item"><span>Status</span><strong><span class="pill ' +
+          VK.esc(pillClass) + '">' + VK.esc(st) + "</span></strong></div>" +
+        '<div class="item" style="grid-column:1/-1"><span>Detalhe</span><strong>' +
+          VK.esc(a.detalhe || "—") + "</strong></div>" +
+      "</div>" +
+      '<div class="ad-actions">' +
+        '<button class="btn primary" type="button" data-abrir="1">Abrir no Kanban</button>' +
+      "</div>";
+  }
+
+  // Um único listener: o conteúdo de #alerts-list é recriado a cada render.
+  VK.on(VK.$("#alerts-list"), "click", ".alerta", function (ev, el) {
+    if (masterDetailAlertas()) {
+      VK.state.alertaSel = el.getAttribute("data-sel") || "";
+      VK.alertas.render();
+      return;
+    }
+    abrirNoKanban(el.getAttribute("data-chave"), el.getAttribute("data-codigo"));
+  });
+
+  VK.on(VK.$("#alert-detail"), "click", "[data-abrir]", function () {
+    var a = alertaPorId(VK.state.alertaSel || "");
+    if (a) abrirNoKanban(a.chave, a.codigo_confeccao);
   });
 
   VK.on(VK.$("#alerts-list"), "click", ".btn-restaurar-alertas", function (ev) {
@@ -218,6 +320,13 @@
       var box = VK.$("#alerts-list");
       if (!box) return;
       var lista = VK.state.alertas || [];
+
+      if (VK.state.alertaSel && !alertaPorId(VK.state.alertaSel)) {
+        VK.state.alertaSel = "";
+      }
+      if (masterDetailAlertas() && !VK.state.alertaSel && lista.length) {
+        VK.state.alertaSel = idAlerta(lista[0]);
+      }
 
       if (!lista.length) {
         var limpos = VK.state.alertasLimpos || 0;
@@ -232,12 +341,16 @@
               "</button></div>"
             : "") +
           "</div>";
+        renderDetalheAlerta();
         return;
       }
 
       box.innerHTML = lista.map(function (a) {
         var sev = Number(a.severidade) || 1;
-        return '<div class="alerta sev-' + sev + '" data-chave="' + VK.esc(a.chave) + '" ' +
+        var sel = idAlerta(a);
+        return '<div class="alerta sev-' + sev +
+          (masterDetailAlertas() && sel === VK.state.alertaSel ? " ativo" : "") +
+          '" data-sel="' + VK.esc(sel) + '" data-chave="' + VK.esc(a.chave) + '" ' +
           'data-codigo="' + VK.esc(a.codigo_confeccao || "") + '">' +
           '<div class="ico">' + (ICONES[a.tipo] || "•") + "</div>" +
           '<div class="corpo"><strong>#' + VK.esc(a.pedido) + " · " + VK.esc(a.titulo) + "</strong>" +
@@ -247,6 +360,8 @@
           '<span class="pill ' + VK.esc(a.status === "Em andamento" ? "Média" : a.status) + '">' +
           VK.esc(a.status) + "</span></div></div>";
       }).join("");
+
+      renderDetalheAlerta();
     },
 
     abrir: function () {
@@ -267,6 +382,7 @@
       gravarAlertasLimpos(Object.keys(mapa));
 
       VK.state.alertas = [];
+      VK.state.alertaSel = "";
       VK.state.alertasLimpos = (VK.state.alertasTodos || []).length;
       VK.setBadge("badge-alertas", 0);
       VK.alertas.render();
@@ -279,6 +395,7 @@
     restaurar: function () {
       gravarAlertasLimpos([]);
       VK.state.alertas = (VK.state.alertasTodos || []).slice();
+      VK.state.alertaSel = "";
       VK.state.alertasLimpos = 0;
       VK.setBadge("badge-alertas", VK.state.alertas.length);
       VK.alertas.render();
@@ -288,21 +405,70 @@
 
   /* ---------------- Navegação ---------------- */
 
+  var TITULOS = {
+    kanban: "Kanban",
+    chat: "Chat",
+    alertas: "Alertas",
+    admin: "Administração",
+  };
+
+  function fecharDrawer() {
+    var drawer = VK.$("#drawer");
+    var scrim = VK.$("#drawer-scrim");
+    var btn = VK.$("#btn-menu");
+    if (drawer) {
+      drawer.classList.remove("open");
+      drawer.setAttribute("aria-hidden", "true");
+    }
+    if (scrim) scrim.classList.add("hide");
+    if (btn) btn.setAttribute("aria-expanded", "false");
+    document.body.classList.remove("drawer-aberto");
+  }
+  VK.fecharDrawer = fecharDrawer;
+
+  function abrirDrawer() {
+    var drawer = VK.$("#drawer");
+    if (!drawer) return;
+    var scrim = VK.$("#drawer-scrim");
+    var btn = VK.$("#btn-menu");
+    drawer.classList.add("open");
+    drawer.setAttribute("aria-hidden", "false");
+    if (scrim) scrim.classList.remove("hide");
+    if (btn) btn.setAttribute("aria-expanded", "true");
+    document.body.classList.add("drawer-aberto");
+  }
+  VK.abrirDrawer = abrirDrawer;
+
+  function fecharMenus() {
+    var menu = VK.$("#user-dropdown");
+    if (menu) menu.classList.add("hide");
+    fecharDrawer();
+    VK.fecharDialogo("dlg-mais");
+  }
+
   VK.nav = function (tab) {
     if (tab === "admin" && !VK.ehAnalista()) tab = "kanban";
     if (["kanban", "chat", "alertas", "admin"].indexOf(tab) < 0) tab = "kanban";
 
     VK.state.tab = tab;
 
-    VK.$$(".tab").forEach(function (b) {
+    VK.$$("[data-tab]").forEach(function (b) {
       b.classList.toggle("active", b.getAttribute("data-tab") === tab);
     });
+    var btnMais = VK.$("#btn-mais");
+    if (btnMais) btnMais.classList.toggle("active", tab === "admin");
+
     VK.$$(".view").forEach(function (v) { v.classList.add("hide"); });
 
     var view = VK.$("#view-" + tab);
     if (view) view.classList.remove("hide");
 
+    var titulo = VK.$("#topbar-title");
+    if (titulo) titulo.textContent = TITULOS[tab] || "Kanban";
+
     if (window.history && history.replaceState) history.replaceState(null, "", "#" + tab);
+
+    fecharMenus();
 
     if (tab === "kanban") VK.kanban.abrir();
     else if (tab === "chat") VK.chat.abrir();
@@ -325,9 +491,30 @@
 
   /* ---------------- Eventos ---------------- */
 
+  function executarConta(act) {
+    if (act === "senha") {
+      VK.$("#form-senha").reset();
+      VK.$("#senha-msg").textContent = "";
+      VK.abrirDialogo("dlg-senha");
+    } else if (act === "conexao") {
+      VK.$("#conexao-url").value = VK.config.apiUrl || "";
+      VK.$("#conexao-msg").textContent = "";
+      VK.abrirDialogo("dlg-conexao");
+    } else if (act === "sair") {
+      VK.call("logout").catch(function () { }).then(function () {
+        VK.logoutLocal();
+        location.replace("index.html");
+      });
+    }
+  }
+
   function ligarEventos() {
-    VK.on(VK.$("#tabs"), "click", ".tab", function (ev, el) {
-      VK.nav(el.getAttribute("data-tab"));
+    // Navegação: gaveta, barra inferior e folha "Mais".
+    document.addEventListener("click", function (ev) {
+      var el = ev.target && ev.target.closest ? ev.target.closest("[data-tab]") : null;
+      if (!el) return;
+      var tab = el.getAttribute("data-tab");
+      if (tab) VK.nav(tab);
     });
 
     window.addEventListener("hashchange", function () {
@@ -335,32 +522,58 @@
       if (tab && tab !== VK.state.tab) VK.nav(tab);
     });
 
-    // Menu do usuário
+    // Gaveta lateral (desktop).
+    var btnMenu = VK.$("#btn-menu");
+    var drawer = VK.$("#drawer");
+    if (btnMenu && drawer) {
+      btnMenu.addEventListener("click", function () {
+        if (drawer.classList.contains("open")) fecharDrawer();
+        else abrirDrawer();
+      });
+    }
+    var scrim = VK.$("#drawer-scrim");
+    if (scrim) scrim.addEventListener("click", fecharDrawer);
+    document.addEventListener("keydown", function (ev) {
+      if (ev.key === "Escape") fecharDrawer();
+    });
+    window.addEventListener("resize", function () {
+      if (window.innerWidth <= 760) fecharDrawer();
+    });
+
+    // Barra inferior: "Mais".
+    var btnMais = VK.$("#btn-mais");
+    if (btnMais) {
+      btnMais.addEventListener("click", function () {
+        VK.abrirDialogo("dlg-mais");
+      });
+    }
+
+    // Menu do usuário (desktop) ou folha "Mais" (celular).
     var menu = VK.$("#user-dropdown");
-    VK.$("#btn-user").addEventListener("click", function (ev) {
-      ev.stopPropagation();
-      menu.classList.toggle("hide");
-    });
+    var btnUser = VK.$("#btn-user");
+    if (menu && btnUser) {
+      btnUser.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        if (window.matchMedia && window.matchMedia("(max-width: 760px)").matches) {
+          VK.abrirDialogo("dlg-mais");
+          return;
+        }
+        menu.classList.toggle("hide");
+      });
+      document.addEventListener("click", function (ev) {
+        if (!menu.contains(ev.target)) menu.classList.add("hide");
+      });
+    }
+
+    // Ações de conta em qualquer menu (dropdown, gaveta ou folha "Mais").
+    // A verificação de OTA é tratada pelo native.js no app Android.
     document.addEventListener("click", function (ev) {
-      if (!menu.contains(ev.target)) menu.classList.add("hide");
-    });
-    VK.on(menu, "click", "button", function (ev, el) {
-      menu.classList.add("hide");
+      var el = ev.target && ev.target.closest ? ev.target.closest("[data-act]") : null;
+      if (!el) return;
       var act = el.getAttribute("data-act");
-      if (act === "senha") {
-        VK.$("#form-senha").reset();
-        VK.$("#senha-msg").textContent = "";
-        VK.abrirDialogo("dlg-senha");
-      } else if (act === "conexao") {
-        VK.$("#conexao-url").value = VK.config.apiUrl || "";
-        VK.$("#conexao-msg").textContent = "";
-        VK.abrirDialogo("dlg-conexao");
-      } else if (act === "sair") {
-        VK.call("logout").catch(function () { }).then(function () {
-          VK.logoutLocal();
-          location.replace("index.html");
-        });
-      }
+      if (!act || act === "verificar-ota") return;
+      fecharMenus();
+      executarConta(act);
     });
 
     // Trocar senha

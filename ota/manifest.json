@@ -1,8 +1,8 @@
 {
-  "versao": "1.4.1",
-  "zip": "https://raw.githubusercontent.com/Mativis/visual_kanban/main/ota/www-1.4.1.zip",
-  "sha256": "abbb8c9e285ac15935b86017d5661b8fda1636bceae902a8d46ce0c8b7884dfb",
-  "tamanho": 310751,
-  "publicado_em": "2026-11-06T18:51:20Z",
-  "notas": "Chat abre na hora com a conversa salva e o envio aparece sem esperar o servidor; chamadas de leitura via GET (~1s) e cache do resumo por 10 min"
+  "versao": "1.5.0",
+  "zip": "https://raw.githubusercontent.com/Mativis/visual_kanban/main/ota/www-1.5.0.zip",
+  "sha256": "4c5b048cda55435ba6615aec52af81cb8fbc8bc69b6da5d4b08f833d1625518e",
+  "tamanho": 314468,
+  "publicado_em": "2026-11-06T19:13:40Z",
+  "notas": "Navegação renovada: barra inferior fixa no celular com Kanban, Chat, Alertas e Mais (Administração, conta, conexão, OTA e sair); menu lateral no desktop e alertas em lista + detalhe em telas largas."
 }

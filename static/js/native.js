@@ -85,21 +85,25 @@
     leitor.readAsDataURL(blob);
   };
 
-  /* Verificação manual de OTA no menu do usuário. */
-  var botaoAtualizar = document.getElementById("btn-verificar-ota");
-  if (botaoAtualizar && typeof bridge.checkUpdate === "function") {
-    botaoAtualizar.classList.remove("hide");
-    botaoAtualizar.addEventListener("click", function () {
-      if (botaoAtualizar.disabled) return;
-      botaoAtualizar.disabled = true;
-      VK.toast("Verificando atualizações…");
-      try {
-        bridge.checkUpdate();
-      } catch (e) {
-        VK.toast("Não foi possível verificar: " +
-          (e && e.message ? e.message : e), "error");
-      }
-      setTimeout(function () { botaoAtualizar.disabled = false; }, 6000);
+  /* Verificação manual de OTA (menu do usuário, gaveta e folha "Mais"). */
+  var botoesAtualizar = VK.$$('[data-act="verificar-ota"]');
+  if (botoesAtualizar.length && typeof bridge.checkUpdate === "function") {
+    botoesAtualizar.forEach(function (botao) {
+      botao.classList.remove("hide");
+      botao.addEventListener("click", function () {
+        if (botao.disabled) return;
+        botoesAtualizar.forEach(function (b) { b.disabled = true; });
+        VK.toast("Verificando atualizações…");
+        try {
+          bridge.checkUpdate();
+        } catch (e) {
+          VK.toast("Não foi possível verificar: " +
+            (e && e.message ? e.message : e), "error");
+        }
+        setTimeout(function () {
+          botoesAtualizar.forEach(function (b) { b.disabled = false; });
+        }, 6000);
+      });
     });
   }
 

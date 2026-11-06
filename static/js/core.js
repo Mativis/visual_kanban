@@ -45,6 +45,7 @@
     versaoDados: "",
     versaoEscopo: "",
     tab: "kanban",
+    alertaSel: "",
     thread: "",
     arrastando: false,
     filtros: {
@@ -341,11 +342,15 @@
   };
 
   VK.setBadge = function (id, valor) {
-    var el = document.getElementById(id);
-    if (!el) return;
     var n = Number(valor) || 0;
-    el.textContent = n > 99 ? "99+" : String(n);
-    el.classList.toggle("hide", n <= 0);
+    var txt = n > 99 ? "99+" : String(n);
+    var alvos = VK.$$('[data-badge="' + id + '"]');
+    var antigo = document.getElementById(id);
+    if (antigo && alvos.indexOf(antigo) < 0) alvos.push(antigo);
+    alvos.forEach(function (el) {
+      el.textContent = txt;
+      el.classList.toggle("hide", n <= 0);
+    });
   };
 
   VK.abrirDialogo = function (id) {
