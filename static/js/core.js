@@ -190,8 +190,13 @@
     function limpar() { if (timer) clearTimeout(timer); }
 
     var bruto = JSON.stringify(corpo);
-    var qs = new URLSearchParams({ payload: bruto }).toString();
-    var porGet = qs.length <= 6000;
+    var qs = "";
+    try {
+      if (window.URLSearchParams) {
+        qs = new URLSearchParams({ payload: bruto }).toString();
+      }
+    } catch (e) { qs = ""; }
+    var porGet = !!qs && qs.length <= 6000;
     var sep = url.indexOf("?") >= 0 ? "&" : "?";
     var urlGet = url + sep + qs;
     var escrita = !!ACOES_ESCRITA[String(action).toLowerCase()];

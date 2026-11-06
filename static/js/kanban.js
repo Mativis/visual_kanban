@@ -136,7 +136,10 @@
 
     if (VK.ehAnalista() && !VK.state.resumo.length) {
       var cr = VK.cacheLocal.ler("resumo", "ALL");
-      if (cr && cr.valor && Array.isArray(cr.valor.confeccoes)) {
+      // Lista de confecções muda pouco, mas cache de ontem pode esconder uma
+      // confecção nova: só aproveita se for recente.
+      if (cr && cr.valor && Array.isArray(cr.valor.confeccoes) &&
+          Date.now() - (cr.em || 0) <= 10 * 60 * 1000) {
         VK.state.resumo = cr.valor.confeccoes;
         if (cr.valor.ultimoEnvio) VK.state.ultimoEnvio = cr.valor.ultimoEnvio;
       }

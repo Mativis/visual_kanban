@@ -1,8 +1,8 @@
 {
-  "versao": "1.4.0",
-  "zip": "https://raw.githubusercontent.com/Mativis/visual_kanban/main/ota/www-1.4.0.zip",
-  "sha256": "315654be6ea538da123b39fbf3bec29bcb571b5f304da93455394e04b08158ac",
-  "tamanho": 309229,
-  "publicado_em": "2026-11-04T13:06:31Z",
-  "notas": "Chat sincroniza em uma chamada so, menos leituras na planilha e o quadro abre na hora com os ultimos dados salvos"
+  "versao": "1.4.1",
+  "zip": "https://raw.githubusercontent.com/Mativis/visual_kanban/main/ota/www-1.4.1.zip",
+  "sha256": "abbb8c9e285ac15935b86017d5661b8fda1636bceae902a8d46ce0c8b7884dfb",
+  "tamanho": 310751,
+  "publicado_em": "2026-11-06T18:51:20Z",
+  "notas": "Chat abre na hora com a conversa salva e o envio aparece sem esperar o servidor; chamadas de leitura via GET (~1s) e cache do resumo por 10 min"
 }
