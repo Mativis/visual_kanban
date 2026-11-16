@@ -1444,8 +1444,13 @@
   });
 
   VK.on(board, "click", ".card", function (ev, card) {
-    if (ev.target.closest("[data-mover]") || ev.target.closest("[data-parcial]")) return;
+    if (ev.target.closest("[data-mover]") || ev.target.closest("[data-parcial]") ||
+        ev.target.closest(".sel-check") || ev.target.classList.contains("sel")) return;
     abrirDetalhe(card.getAttribute("data-chave"));
+  });
+
+  VK.on(board, "click", ".sel", function (ev, el) {
+    ev.stopPropagation();
   });
 
   // Filtros

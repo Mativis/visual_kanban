@@ -1,8 +1,8 @@
 {
-  "versao": "1.5.5",
-  "zip": "https://raw.githubusercontent.com/Mativis/visual_kanban/main/ota/www-1.5.5.zip",
-  "sha256": "5ed70c7890c95053dd344e4485f3cc9d2169ae201077c7a6eeda82d82e10bc16",
-  "tamanho": 316554,
-  "publicado_em": "2026-11-16T19:21:11Z",
-  "notas": "Corrige layout ilegivel dos cards em modo lista"
+  "versao": "1.5.6",
+  "zip": "https://raw.githubusercontent.com/Mativis/visual_kanban/main/ota/www-1.5.6.zip",
+  "sha256": "ed6650c2d07ca69760a44da022e8900090a2ff2c88f47386f67b6ffc38586747",
+  "tamanho": 316584,
+  "publicado_em": "2026-11-16T19:24:45Z",
+  "notas": "Corrige checkbox abrindo detalhes do pedido"
 }
