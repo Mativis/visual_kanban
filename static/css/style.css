@@ -1323,3 +1323,24 @@ dialog[open] { animation: subir .18s ease-out; }
   .board.modo-lista .card { padding: 8px 8px 8px 34px; }
   .seg-classif { margin: 6px 0 8px; }
 }
+
+
+/* ===== Card compacto em modo lista: ~2 linhas, expande ao tocar ===== */
+.board.modo-lista .card .detalhe { display: none; }
+.board.modo-lista .card.expandido .detalhe { display: block; margin-top: 6px; }
+.board.modo-lista .card .prod {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.board.modo-lista .card.expandido .prod {
+  -webkit-line-clamp: unset; overflow: visible;
+}
+.board.modo-lista .card .toggle-detalhe {
+  float: right; margin-left: 6px; border: 0; background: none;
+  font-size: 14px; color: var(--muted, #5a6172); cursor: pointer;
+  padding: 0 4px; line-height: 1;
+}
+.board.modo-lista .card.expandido .toggle-detalhe { transform: rotate(180deg); }
+/* No modo quadro, detalhe sempre visivel e toggle oculto */
+.board:not(.modo-lista) .card .detalhe { display: block; }
+.board:not(.modo-lista) .card .toggle-detalhe { display: none; }

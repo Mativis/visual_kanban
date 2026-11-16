@@ -1,8 +1,8 @@
 {
-  "versao": "1.5.8",
-  "zip": "https://raw.githubusercontent.com/Mativis/visual_kanban/main/ota/www-1.5.8.zip",
-  "sha256": "3454f821dc336259a9577f6f68cd44fc4bb1774aff62b2d45b7e65328ef9ef5d",
-  "tamanho": 317524,
-  "publicado_em": "2026-11-16T19:39:23Z",
-  "notas": "Refino visualizacao em lista (mais limpa)"
+  "versao": "1.5.9",
+  "zip": "https://raw.githubusercontent.com/Mativis/visual_kanban/main/ota/www-1.5.9.zip",
+  "sha256": "4dbcd90f2dec9a2a891caf409b3fdf0b636a53b5cdd4152023e0e15dd3687619",
+  "tamanho": 317905,
+  "publicado_em": "2026-11-16T19:43:10Z",
+  "notas": "Card compacto ~2 linhas, expande ao tocar"
 }

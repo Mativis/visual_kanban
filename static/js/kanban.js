@@ -390,12 +390,14 @@
       '<label class="sel-check" title="Selecionar"><input type="checkbox" class="sel" data-chave="' +
       VK.esc(p.chave) + '"></label>' +
       '<div class="top"><span class="num">#' + VK.esc(p.pedido || "—") + "</span>" +
-      '<span class="pill ' + VK.esc(prio) + '">' + VK.esc(prio) + "</span></div>" +
+      '<span class="pill ' + VK.esc(prio) + '">' + VK.esc(prio) + "</span>" +
+      '<button type="button" class="toggle-detalhe" title="Ver detalhes" aria-label="Ver detalhes">▾</button></div>' +
       '<div class="prod">' + VK.esc(p.produto || "Sem descrição") + "</div>" +
+      '<div class="detalhe">' +
       '<div class="meta">' +
       '<span class="chip">Cód ' + VK.esc(p.cod_confec || "—") + "</span>" +
       '<span class="chip qtd">' + VK.num(p.saldo) + " un</span>" +
-      (quebra ? '<span class="chip quebra" title="Peças que não virão por falta de tecido">✂ ' +
+      (quebra ? '<span class="chip quebra" title="Peças que não vieram por falta de tecido">✂ ' +
         VK.num(quebra) + " quebra</span>" : "") +
       (p.qe ? '<span class="chip qe">Q.E ' + VK.num(p.qe) + "</span>" : "") +
       (p.marca ? '<span class="chip">' + VK.esc(p.marca) + "</span>" : "") +
@@ -405,6 +407,14 @@
       '<span class="due ' + prazo + '">' + VK.dataBR(p.dt_entrega) +
       (p.dias === null || p.dias === undefined ? "" : " · " + VK.diasTxt(p.dias)) + "</span>" +
       (VK.ehAnalista() ? '<span class="conf-tag" title="' + VK.esc(p.confeccao) + '">' +
+        VK.esc(p.confeccao) + "</span>" : "") +
+      "</div>" +
+      '<div class="status-linha"><span>' +
+      (p.status_por
+        ? "por " + VK.esc(p.status_por) + " · " + VK.dataHora(p.status_em)
+        : "sem movimentação") +
+      "</span>" + (botoes ? '<span class="acoes">' + botoes + "</span>" : "") +
+      "</div></div></article>";
         VK.esc(p.confeccao) + "</span>" : "") +
       "</div>" +
       '<div class="status-linha"><span>' +
@@ -1485,7 +1495,11 @@
     render();
   });
 
-  VK.on(board, "click", ".card", function (ev, card) {
+  VK.on(board, "click", ".toggle-detalhe", function (ev, el) {
+    ev.stopPropagation();
+    var card = el.closest(".card");
+    if (card) card.classList.toggle("expandido");
+  });
     if (ev.target.closest("[data-mover]") || ev.target.closest("[data-parcial]") ||
         ev.target.closest(".sel-check") || ev.target.classList.contains("sel")) return;
     abrirDetalhe(card.getAttribute("data-chave"));
