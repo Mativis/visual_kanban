@@ -1,8 +1,8 @@
 {
-  "versao": "1.5.0",
-  "zip": "https://raw.githubusercontent.com/Mativis/visual_kanban/main/ota/www-1.5.0.zip",
-  "sha256": "4c5b048cda55435ba6615aec52af81cb8fbc8bc69b6da5d4b08f833d1625518e",
-  "tamanho": 314468,
-  "publicado_em": "2026-11-06T19:13:40Z",
-  "notas": "Navegação renovada: barra inferior fixa no celular com Kanban, Chat, Alertas e Mais (Administração, conta, conexão, OTA e sair); menu lateral no desktop e alertas em lista + detalhe em telas largas."
+  "versao": "1.5.1",
+  "zip": "https://raw.githubusercontent.com/Mativis/visual_kanban/main/ota/www-1.5.1.zip",
+  "sha256": "5902ccffa9bcda1ea931f712f978aa712ca42ca6015947fba37773027a0d19e2",
+  "tamanho": 316094,
+  "publicado_em": "2026-11-16T19:06:15Z",
+  "notas": "Modo lista com selecao em lote, sem arrastar"
 }
