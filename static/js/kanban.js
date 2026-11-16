@@ -415,14 +415,6 @@
         : "sem movimentação") +
       "</span>" + (botoes ? '<span class="acoes">' + botoes + "</span>" : "") +
       "</div></div></article>";
-        VK.esc(p.confeccao) + "</span>" : "") +
-      "</div>" +
-      '<div class="status-linha"><span>' +
-      (p.status_por
-        ? "por " + VK.esc(p.status_por) + " · " + VK.dataHora(p.status_em)
-        : "sem movimentação") +
-      "</span>" + (botoes ? '<span class="acoes">' + botoes + "</span>" : "") +
-      "</div></article>";
   }
 
   /* ---------------- Ações em lote (modo lista) ---------------- */
@@ -1500,6 +1492,8 @@
     var card = el.closest(".card");
     if (card) card.classList.toggle("expandido");
   });
+
+  VK.on(board, "click", ".card", function (ev, card) {
     if (ev.target.closest("[data-mover]") || ev.target.closest("[data-parcial]") ||
         ev.target.closest(".sel-check") || ev.target.classList.contains("sel")) return;
     abrirDetalhe(card.getAttribute("data-chave"));

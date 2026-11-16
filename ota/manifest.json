@@ -1,8 +1,8 @@
 {
-  "versao": "1.5.9",
-  "zip": "https://raw.githubusercontent.com/Mativis/visual_kanban/main/ota/www-1.5.9.zip",
-  "sha256": "4dbcd90f2dec9a2a891caf409b3fdf0b636a53b5cdd4152023e0e15dd3687619",
-  "tamanho": 317905,
-  "publicado_em": "2026-11-16T19:43:10Z",
-  "notas": "Card compacto ~2 linhas, expande ao tocar"
+  "versao": "1.5.10",
+  "zip": "https://raw.githubusercontent.com/Mativis/visual_kanban/main/ota/www-1.5.10.zip",
+  "sha256": "cf9bd19a5840063b3216b853faa4cd881d4fd10c492472b60ee8b48573560808",
+  "tamanho": 317898,
+  "publicado_em": "2026-11-16T19:50:36Z",
+  "notas": "Corrige bug checkbox abrindo detalhes"
 }
