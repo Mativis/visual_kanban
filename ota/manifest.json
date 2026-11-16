@@ -1,8 +1,8 @@
 {
-  "versao": "1.5.10",
-  "zip": "https://raw.githubusercontent.com/Mativis/visual_kanban/main/ota/www-1.5.10.zip",
-  "sha256": "cf9bd19a5840063b3216b853faa4cd881d4fd10c492472b60ee8b48573560808",
-  "tamanho": 317898,
-  "publicado_em": "2026-11-16T19:50:36Z",
-  "notas": "Corrige bug checkbox abrindo detalhes"
+  "versao": "1.5.11",
+  "zip": "https://raw.githubusercontent.com/Mativis/visual_kanban/main/ota/www-1.5.11.zip",
+  "sha256": "47850bf71b427b5036b6f68576c063adce6eafde7c302bff2c42a2d4345d29b1",
+  "tamanho": 317605,
+  "publicado_em": "2026-11-16T19:55:12Z",
+  "notas": "Remove visualizacao em quadro, apenas lista"
 }

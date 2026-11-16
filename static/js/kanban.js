@@ -34,7 +34,7 @@
 
   if (!VK.state.mostrar) VK.state.mostrar = {};
   if (!VK.state.carregando) VK.state.carregando = null;
-  if (!VK.state.viewMode) VK.state.viewMode = (localStorage.getItem("vk_viewMode") || "lista");
+  VK.state.viewMode = "lista";
   if (!VK.state.selecionados) VK.state.selecionados = Object.create(null);
   if (!VK.state.filtroClassif) VK.state.filtroClassif = (localStorage.getItem("vk_filtroClassif") || "todos");
 
@@ -385,7 +385,6 @@
     var prio = p.prioridade || "Baixa";
 
     return '<article class="card prio-' + VK.esc(prio) + '"' +
-      ' draggable="' + (alvos.length ? "true" : "false") + '"' +
       ' data-chave="' + VK.esc(p.chave) + '">' +
       '<label class="sel-check" title="Selecionar"><input type="checkbox" class="sel" data-chave="' +
       VK.esc(p.chave) + '"></label>' +
@@ -1665,26 +1664,4 @@
       VK.$("#f-busca").focus();
     }
   });
-  // Toggle de modo de visualização: Quadro (board) / Lista (seleção em lote)
-  (function () {
-    var right = VK.$(".topbar-right");
-    if (!right) return;
-    var btn = document.createElement("button");
-    btn.type = "button";
-    btn.id = "btn-view-mode";
-    btn.className = "btn-view-mode";
-    btn.title = "Alternar entre quadro e lista";
-    right.insertBefore(btn, right.firstChild);
-    function atualizarRotulo() {
-      btn.textContent = VK.state.viewMode === "lista" ? " » Quadro" : " » Lista";
-    }
-    atualizarRotulo();
-    btn.addEventListener("click", function () {
-      VK.state.viewMode = VK.state.viewMode === "lista" ? "board" : "lista";
-      try { localStorage.setItem("vk_viewMode", VK.state.viewMode); } catch (e) {}
-      atualizarRotulo();
-      render();
-    });
-  })();
-
 })();
