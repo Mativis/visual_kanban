@@ -1201,8 +1201,8 @@ dialog[open] { animation: subir .18s ease-out; }
 .board.modo-lista .column header { position: sticky; top: 0; z-index: 2; }
 .board.modo-lista .col-body { display: flex; flex-direction: column; gap: 0.5rem; }
 .card .sel-check { display: none; margin-right: 0.5rem; vertical-align: middle; }
-.board.modo-lista .card .sel-check { display: inline-flex; align-items: center; }
-.board.modo-lista .card { display: flex; align-items: flex-start; gap: 0.5rem; }
+.board.modo-lista .card .sel-check { display: flex; align-items: center; justify-content: center; position: absolute; left: 10px; top: 12px; width: 24px; height: 24px; }
+.board.modo-lista .card { display: block; position: relative; padding-left: 40px; }
 .board.modo-lista .card .sel-check input { width: 20px; height: 20px; }
 .btn-view-mode { margin-right: 0.5rem; padding: 0.35rem 0.7rem; border-radius: 8px; border: 1px solid var(--border, #cbd5e1); background: var(--surface, #fff); cursor: pointer; font-weight: 600; }
 .batch-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; padding: 0.6rem 1rem; background: var(--surface, #fff); border-top: 1px solid var(--border, #cbd5e1); box-shadow: 0 -2px 10px rgba(0,0,0,0.08); }
