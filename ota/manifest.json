@@ -1,8 +1,8 @@
 {
-  "versao": "1.5.7",
-  "zip": "https://raw.githubusercontent.com/Mativis/visual_kanban/main/ota/www-1.5.7.zip",
-  "sha256": "b6a23bf3c43d1892ab6db28b8845e0a3c43faa22c442b3a3c6263a46e3b827ca",
-  "tamanho": 317212,
-  "publicado_em": "2026-11-16T19:32:36Z",
-  "notas": "3 telas: Futuros/Abertos/Concluidos por classificacao"
+  "versao": "1.5.8",
+  "zip": "https://raw.githubusercontent.com/Mativis/visual_kanban/main/ota/www-1.5.8.zip",
+  "sha256": "3454f821dc336259a9577f6f68cd44fc4bb1774aff62b2d45b7e65328ef9ef5d",
+  "tamanho": 317524,
+  "publicado_em": "2026-11-16T19:39:23Z",
+  "notas": "Refino visualizacao em lista (mais limpa)"
 }

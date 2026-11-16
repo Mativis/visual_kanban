@@ -1283,3 +1283,43 @@ dialog[open] { animation: subir .18s ease-out; }
   .seg-classif { gap: 4px; }
   .seg-classif .seg-btn { font-size: 0.8rem; padding: 0.4rem 0.5rem; min-height: 38px; }
 }
+
+
+/* ===== Modo lista: visualizacao limpa (estilo lista, nao quadro) ===== */
+.board.modo-lista { display: block; width: 100%; gap: 0; }
+.board.modo-lista .column {
+  width: 100%; flex: none; min-width: 0;
+  background: transparent; border: 0; box-shadow: none;
+  margin: 0 0 12px 0; padding: 0;
+}
+.board.modo-lista .column header {
+  position: sticky; top: 0; z-index: 2;
+  background: var(--surface, #fff); border-radius: 10px;
+  padding: 8px 12px; margin-bottom: 6px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  display: flex; align-items: center; gap: 8px;
+}
+.board.modo-lista .column header strong { font-size: 14px; }
+.board.modo-lista .column header .count { font-size: 12px; font-weight: 700; }
+.board.modo-lista .column header .sum { font-size: 11px; color: var(--muted, #5a6172); }
+.board.modo-lista .col-body { padding: 0; gap: 6px; }
+.board.modo-lista .card {
+  border-radius: 10px; padding: 10px 10px 10px 36px;
+  box-shadow: 0 1px 2px rgba(16,24,40,0.04);
+}
+.board.modo-lista .card .top { margin-bottom: 2px; }
+.board.modo-lista .card .num { font-size: 12px; font-weight: 700; }
+.board.modo-lista .card .pill { font-size: 10px; padding: 2px 8px; }
+.board.modo-lista .card .prod { font-size: 13px; font-weight: 600; margin: 2px 0; line-height: 1.3; }
+.board.modo-lista .card .meta { gap: 4px; margin: 4px 0; }
+.board.modo-lista .card .chip { font-size: 10.5px; padding: 1px 6px; }
+.board.modo-lista .card .foot { font-size: 11px; }
+.board.modo-lista .card .status-linha { font-size: 10.5px; margin-top: 4px; }
+.board.modo-lista .card .acoes button { width: 32px; height: 30px; font-size: 13px; }
+.board.modo-lista .col-vazio { padding: 12px; text-align: center; color: var(--muted, #7a8194); font-size: 12px; }
+@media (max-width: 760px) {
+  .board.modo-lista .column header { padding: 8px 10px; }
+  .board.modo-lista .column header strong { font-size: 13px; }
+  .board.modo-lista .card { padding: 8px 8px 8px 34px; }
+  .seg-classif { margin: 6px 0 8px; }
+}
