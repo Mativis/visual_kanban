@@ -34,7 +34,7 @@
 
   if (!VK.state.mostrar) VK.state.mostrar = {};
   if (!VK.state.carregando) VK.state.carregando = null;
-  if (!VK.state.viewMode) VK.state.viewMode = (localStorage.getItem("vk_viewMode") || "board");
+  if (!VK.state.viewMode) VK.state.viewMode = (localStorage.getItem("vk_viewMode") || "lista");
   if (!VK.state.selecionados) VK.state.selecionados = Object.create(null);
 
   var parcialChave = "";
