@@ -1,8 +1,8 @@
 {
-  "versao": "1.5.2",
-  "zip": "https://raw.githubusercontent.com/Mativis/visual_kanban/main/ota/www-1.5.2.zip",
-  "sha256": "0422fbd445a14173fa631f448b36d4ad0fa1957c3a2cb30acc41abebd21d1305",
-  "tamanho": 316368,
-  "publicado_em": "2026-11-16T19:11:46Z",
-  "notas": "Refino layout mobile para A03 Core"
+  "versao": "1.5.3",
+  "zip": "https://raw.githubusercontent.com/Mativis/visual_kanban/main/ota/www-1.5.3.zip",
+  "sha256": "c53bcdd309334ef8a8e8dc818fab4df8dc829f540373fa7550367f58c958c8ef",
+  "tamanho": 316545,
+  "publicado_em": "2026-11-16T19:13:23Z",
+  "notas": "Ajuste layout cards modo lista (A03 Core)"
 }

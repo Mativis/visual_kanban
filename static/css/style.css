@@ -1242,3 +1242,28 @@ dialog[open] { animation: subir .18s ease-out; }
   .batch-bar select, .batch-bar button { font-size: 0.8rem; min-height: 36px; }
   .board.modo-lista .card .prod { font-size: 12.5px; }
 }
+
+/* ===== Refino cards modo lista (telas pequenas) ===== */
+.board.modo-lista { width: 100%; }
+.board.modo-lista .column { width: 100%; flex: 1 1 100%; min-width: 0; }
+.board.modo-lista .col-body { width: 100%; padding: 8px; gap: 8px; }
+.board.modo-lista .card {
+  width: 100%; max-width: 100%; box-sizing: border-box;
+  padding-left: 40px; position: relative;
+}
+.board.modo-lista .card .sel-check {
+  position: absolute; left: 10px; top: 12px;
+  display: flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px;
+}
+.board.modo-lista .card .sel-check input { width: 20px; height: 20px; margin: 0; }
+.board.modo-lista .card .prod { word-break: break-word; overflow-wrap: anywhere; }
+.board.modo-lista .card .meta { flex-wrap: wrap; gap: 4px; }
+.board.modo-lista .card .chip { font-size: 11px; padding: 2px 6px; }
+@media (max-width: 760px) {
+  .board.modo-lista .card { padding: 10px 10px 10px 38px; }
+  .board.modo-lista .card .prod { font-size: 13px; }
+  .board.modo-lista .card .num { font-size: 12px; }
+  .board.modo-lista .card .acoes button { width: 36px; height: 32px; font-size: 15px; }
+  .board.modo-lista .col-body { padding: 6px; gap: 6px; }
+}
