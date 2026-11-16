@@ -1213,3 +1213,32 @@ dialog[open] { animation: subir .18s ease-out; }
 .batch-bar button { padding: 0.4rem 0.8rem; border-radius: 6px; border: 0; cursor: pointer; font-weight: 600; }
 .batch-bar button.primary { background: #6366f1; color: #fff; }
 .batch-bar button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+
+/* ===== Fase 4 (mobile): refinamento para telas pequenas (A03 Core etc.) ===== */
+.batch-bar { bottom: calc(var(--bottomnav-h, 0px) + 0px); }
+@media (max-width: 760px) {
+  .batch-bar {
+    left: 0; right: 0; bottom: 0;
+    padding: 0.5rem max(8px, var(--safe-right)) calc(0.5rem + var(--safe-bottom)) max(8px, var(--safe-left));
+    gap: 0.4rem;
+  }
+  .batch-bar .sel-all { font-size: 0.85rem; }
+  .batch-bar .batch-count { font-size: 0.78rem; width: 100%; text-align: center; }
+  .batch-bar select, .batch-bar button { flex: 1 1 auto; min-height: 40px; font-size: 0.85rem; }
+  .btn-view-mode { min-height: 36px; padding: 0.3rem 0.55rem; font-size: 0.8rem; }
+  .board.modo-lista .card { flex-direction: row; align-items: flex-start; }
+  .board.modo-lista .card .sel-check { margin-top: 2px; }
+  .board.modo-lista .card .sel-check input { width: 22px; height: 22px; }
+  .board.modo-lista .card .top { flex: 1 1 auto; min-width: 0; }
+  .board.modo-lista .card .prod { font-size: 13px; word-break: break-word; }
+  .board.modo-lista .card .meta { flex-wrap: wrap; gap: 4px; }
+  .board.modo-lista .card .chip { font-size: 11px; padding: 2px 6px; }
+  .board.modo-lista .card .acoes button { width: 36px; height: 32px; font-size: 15px; }
+  /* evita sobreposicao da barra de lote com o conteudo */
+  .app-main { padding-bottom: calc(var(--bottomnav-h, 62px) + 70px + var(--safe-bottom)); }
+}
+@media (max-width: 380px) {
+  .batch-bar select, .batch-bar button { font-size: 0.8rem; min-height: 36px; }
+  .board.modo-lista .card .prod { font-size: 12.5px; }
+}
