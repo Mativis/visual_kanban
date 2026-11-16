@@ -1219,8 +1219,8 @@ dialog[open] { animation: subir .18s ease-out; }
 .batch-bar { bottom: calc(var(--bottomnav-h, 0px) + 0px); }
 @media (max-width: 760px) {
   .batch-bar {
-    left: 0; right: 0; bottom: 0;
-    padding: 0.5rem max(8px, var(--safe-right)) calc(0.5rem + var(--safe-bottom)) max(8px, var(--safe-left));
+    left: 0; right: 0; bottom: var(--bottomnav-h, 62px);
+    padding: 0.5rem max(8px, var(--safe-right)) 0.5rem max(8px, var(--safe-left));
     gap: 0.4rem;
   }
   .batch-bar .sel-all { font-size: 0.85rem; }

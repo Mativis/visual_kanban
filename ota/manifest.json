@@ -1,8 +1,8 @@
 {
-  "versao": "1.5.3",
-  "zip": "https://raw.githubusercontent.com/Mativis/visual_kanban/main/ota/www-1.5.3.zip",
-  "sha256": "c53bcdd309334ef8a8e8dc818fab4df8dc829f540373fa7550367f58c958c8ef",
-  "tamanho": 316545,
-  "publicado_em": "2026-11-16T19:13:23Z",
-  "notas": "Ajuste layout cards modo lista (A03 Core)"
+  "versao": "1.5.4",
+  "zip": "https://raw.githubusercontent.com/Mativis/visual_kanban/main/ota/www-1.5.4.zip",
+  "sha256": "ec5b7466e40cd2c131747d03e6c80fdb19df6491660f87b95bc9728243b8d478",
+  "tamanho": 316550,
+  "publicado_em": "2026-11-16T19:17:52Z",
+  "notas": "Refino navegacao em lista (A03 Core)"
 }
