@@ -34,6 +34,8 @@
 
   if (!VK.state.mostrar) VK.state.mostrar = {};
   if (!VK.state.carregando) VK.state.carregando = null;
+  if (!VK.state.viewMode) VK.state.viewMode = (localStorage.getItem("vk_viewMode") || "board");
+  if (!VK.state.selecionados) VK.state.selecionados = Object.create(null);
 
   var parcialChave = "";
 
@@ -372,6 +374,8 @@
     return '<article class="card prio-' + VK.esc(prio) + '"' +
       ' draggable="' + (alvos.length ? "true" : "false") + '"' +
       ' data-chave="' + VK.esc(p.chave) + '">' +
+      '<label class="sel-check" title="Selecionar"><input type="checkbox" class="sel" data-chave="' +
+      VK.esc(p.chave) + '"></label>' +
       '<div class="top"><span class="num">#' + VK.esc(p.pedido || "—") + "</span>" +
       '<span class="pill ' + VK.esc(prio) + '">' + VK.esc(prio) + "</span></div>" +
       '<div class="prod">' + VK.esc(p.produto || "Sem descrição") + "</div>" +
@@ -397,6 +401,59 @@
       "</span>" + (botoes ? '<span class="acoes">' + botoes + "</span>" : "") +
       "</div></article>";
   }
+
+  /* ---------------- Ações em lote (modo lista) ---------------- */
+
+  function selecionados() {
+    var out = [];
+    VK.$$(".card .sel:checked").forEach(function (cb) {
+      var chave = cb.getAttribute("data-chave");
+      if (chave) out.push(chave);
+    });
+    return out;
+  }
+
+  function atualizarContagemLote() {
+    var bar = VK.$("#batch-bar");
+    if (!bar) return;
+    var n = selecionados().length;
+    var span = bar.querySelector(".batch-count");
+    if (span) span.textContent = n + " selecionado(s)";
+    var btn = VK.$("#batch-mover");
+    if (btn) btn.disabled = n === 0;
+  }
+
+  function limparSelecao() {
+    VK.$$(".card .sel").forEach(function (cb) { cb.checked = false; });
+    var sa = VK.$("#sel-all");
+    if (sa) sa.checked = false;
+    atualizarContagemLote();
+  }
+
+  function moverLote() {
+    var dest = (VK.$("#batch-destino") || {}).value;
+    if (!dest) return;
+    var chaves = selecionados();
+    if (!chaves.length) return;
+    if (!confirm("Mover " + chaves.length + " pedido(s) para \"" + dest + "\"?")) return;
+    var fila = chaves.slice();
+    function proximo() {
+      var c = fila.shift();
+      if (!c) { render(); return; }
+      mover(c, dest);
+      // mover é síncrono no estado local; segue para o próximo
+      proximo();
+    }
+    proximo();
+    limparSelecao();
+  }
+
+  // delegação: atualiza contagem quando checkbox individual muda
+  document.addEventListener("change", function (ev) {
+    if (ev.target && ev.target.classList && ev.target.classList.contains("sel")) {
+      atualizarContagemLote();
+    }
+  });
 
   function render() {
     // Uma única passada de filtro/ordenação; a lista visível é derivada dela.
@@ -445,6 +502,43 @@
     if (VK.state.tab === "kanban" && total === 0) {
       dica = "Nenhum pedido recebido ainda. No Visualfil, gere o Kanban e clique em “Enviar Kanban”.";
     }
+    board.classList.toggle("modo-lista", VK.state.viewMode === "lista");
+    board.classList.toggle("modo-board", VK.state.viewMode !== "lista");
+
+    // Barra de ações em lote (modo lista)
+    var batch = VK.$("#batch-bar");
+    if (!batch) {
+      batch = document.createElement("div");
+      batch.id = "batch-bar";
+      batch.className = "batch-bar hide";
+      batch.innerHTML =
+        '<label class="sel-all"><input type="checkbox" id="sel-all"> Selecionar todos</label>' +
+        '<span class="batch-count">0 selecionado(s)</span>' +
+        '<select id="batch-destino"></select>' +
+        '<button type="button" id="batch-mover" class="primary">Mover selecionados</button>' +
+        '<button type="button" id="batch-limpar">Limpar</button>';
+      document.body.appendChild(batch);
+      // liga eventos da barra de lote uma única vez
+      var selAll = VK.$("#sel-all");
+      if (selAll) selAll.addEventListener("change", function (ev) {
+        var marcado = ev.target.checked;
+        VK.$$(".card .sel").forEach(function (cb) { cb.checked = marcado; });
+        atualizarContagemLote();
+      });
+      var btnMover = VK.$("#batch-mover");
+      if (btnMover) btnMover.addEventListener("click", moverLote);
+      var btnLimpar = VK.$("#batch-limpar");
+      if (btnLimpar) btnLimpar.addEventListener("click", limparSelecao);
+      var selDest = VK.$("#batch-destino");
+      if (selDest) {
+        selDest.innerHTML = COLUNAS.map(function (c) {
+          return '<option value="' + VK.esc(c.id) + '">' + VK.esc(c.rotulo) + "</option>";
+        }).join("");
+      }
+    }
+    if (VK.state.viewMode === "lista") batch.classList.remove("hide");
+    else batch.classList.add("hide");
+
     VK.$("#board-hint").textContent = dica;
   }
 
@@ -1516,4 +1610,26 @@
       VK.$("#f-busca").focus();
     }
   });
+  // Toggle de modo de visualização: Quadro (board) / Lista (seleção em lote)
+  (function () {
+    var right = VK.$(".topbar-right");
+    if (!right) return;
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "btn-view-mode";
+    btn.className = "btn-view-mode";
+    btn.title = "Alternar entre quadro e lista";
+    right.insertBefore(btn, right.firstChild);
+    function atualizarRotulo() {
+      btn.textContent = VK.state.viewMode === "lista" ? " » Quadro" : " » Lista";
+    }
+    atualizarRotulo();
+    btn.addEventListener("click", function () {
+      VK.state.viewMode = VK.state.viewMode === "lista" ? "board" : "lista";
+      try { localStorage.setItem("vk_viewMode", VK.state.viewMode); } catch (e) {}
+      atualizarRotulo();
+      render();
+    });
+  })();
+
 })();
