@@ -36,6 +36,7 @@
   if (!VK.state.carregando) VK.state.carregando = null;
   if (!VK.state.viewMode) VK.state.viewMode = (localStorage.getItem("vk_viewMode") || "lista");
   if (!VK.state.selecionados) VK.state.selecionados = Object.create(null);
+  if (!VK.state.filtroClassif) VK.state.filtroClassif = (localStorage.getItem("vk_filtroClassif") || "todos");
 
   var parcialChave = "";
 
@@ -261,6 +262,18 @@
     if (f.somenteQe) {
       lista = lista.filter(function (p) { return (Number(p.qe) || 0) > 0; });
     }
+    // Filtro por tela (futuros / abertos / concluídos) baseado na classificação
+    var fc = VK.state.filtroClassif || "todos";
+    if (fc !== "todos") {
+      lista = lista.filter(function (p) {
+        var cls = (p.extras && p.extras.Classificacao) ? String(p.extras.Classificacao) : "";
+        var concluido = (p.status === "Pronto" || p.status === "Entregue");
+        if (fc === "futuros") return cls === "Aguardando envio";
+        if (fc === "abertos") return cls === "Aguardando produção" || cls === "Aguardando saldo" || cls === "" || cls === "Sem classificação";
+        if (fc === "concluidos") return concluido;
+        return true;
+      });
+    }
     if (f.ocultarEntregues && !incluirEntregues) {
       lista = lista.filter(function (p) { return p.status !== "Entregue"; });
     }
@@ -464,6 +477,35 @@
       : todos;
 
     renderKpis(lista, todos);
+
+    // Segmented control: Futuros / Abertos / Concluídos / Todos
+    var seg = VK.$("#seg-classif");
+    if (!seg) {
+      seg = document.createElement("div");
+      seg.id = "seg-classif";
+      seg.className = "seg-classif";
+      seg.innerHTML =
+        '<button type="button" data-fc="todos" class="seg-btn">Todos</button>' +
+        '<button type="button" data-fc="futuros" class="seg-btn">Futuros</button>' +
+        '<button type="button" data-fc="abertos" class="seg-btn">Abertos</button>' +
+        '<button type="button" data-fc="concluidos" class="seg-btn">Concluídos</button>';
+      var hint = VK.$("#board-hint");
+      if (hint && hint.parentNode) hint.parentNode.insertBefore(seg, hint);
+      else board.parentNode.insertBefore(seg, board);
+      seg.addEventListener("click", function (ev) {
+        var btn = ev.target.closest("[data-fc]");
+        if (!btn) return;
+        VK.state.filtroClassif = btn.getAttribute("data-fc");
+        try { localStorage.setItem("vk_filtroClassif", VK.state.filtroClassif); } catch (e) {}
+        seg.querySelectorAll(".seg-btn").forEach(function (b) {
+          b.classList.toggle("active", b.getAttribute("data-fc") === VK.state.filtroClassif);
+        });
+        render();
+      });
+    }
+    seg.querySelectorAll(".seg-btn").forEach(function (b) {
+      b.classList.toggle("active", b.getAttribute("data-fc") === VK.state.filtroClassif);
+    });
 
     var board = VK.$("#board");
     board.classList.toggle("oculto-entregue", ocultar);

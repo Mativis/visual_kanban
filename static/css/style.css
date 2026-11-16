@@ -1267,3 +1267,19 @@ dialog[open] { animation: subir .18s ease-out; }
   .board.modo-lista .card .acoes button { width: 36px; height: 32px; font-size: 15px; }
   .board.modo-lista .col-body { padding: 6px; gap: 6px; }
 }
+
+
+/* ===== Segmented control: Futuros / Abertos / Concluídos ===== */
+.seg-classif { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 10px; }
+.seg-classif .seg-btn {
+  flex: 1 1 auto; min-width: 70px; padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border, #cbd5e1); border-radius: 10px;
+  background: var(--surface, #fff); color: var(--text, #1f2430);
+  font-weight: 600; font-size: 0.85rem; cursor: pointer;
+  min-height: 40px;
+}
+.seg-classif .seg-btn.active { background: #6366f1; color: #fff; border-color: #6366f1; }
+@media (max-width: 760px) {
+  .seg-classif { gap: 4px; }
+  .seg-classif .seg-btn { font-size: 0.8rem; padding: 0.4rem 0.5rem; min-height: 38px; }
+}
